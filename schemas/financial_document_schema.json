@@ -1,0 +1,205 @@
+{
+  "type": "object",
+  "title": "Financial Document Field Extraction Schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "required": ["document_type"],
+  "properties": {
+    "document_type": {
+      "type": "string",
+      "title": "Document Type",
+      "enum": ["invoice", "receipt", "statement", "report", "contract", "other"],
+      "description": "Type of financial document."
+    },
+    "document_number": {
+      "type": "string",
+      "title": "Document Number",
+      "description": "Invoice number, receipt ID, or document reference."
+    },
+    "date": {
+      "type": "string",
+      "title": "Document Date",
+      "description": "Date of the document."
+    },
+    "due_date": {
+      "type": "string",
+      "title": "Due Date",
+      "description": "Payment due date if applicable."
+    },
+    "vendor_information": {
+      "type": "object",
+      "title": "Vendor/Company Information",
+      "properties": {
+        "company_name": {
+          "type": "string",
+          "title": "Company Name"
+        },
+        "address": {
+          "type": "string",
+          "title": "Address"
+        },
+        "phone": {
+          "type": "string",
+          "title": "Phone Number"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email"
+        },
+        "tax_id": {
+          "type": "string",
+          "title": "Tax ID"
+        }
+      },
+      "description": "Information about the vendor or issuing company."
+    },
+    "customer_information": {
+      "type": "object",
+      "title": "Customer Information",
+      "properties": {
+        "customer_name": {
+          "type": "string",
+          "title": "Customer Name"
+        },
+        "billing_address": {
+          "type": "string",
+          "title": "Billing Address"
+        },
+        "shipping_address": {
+          "type": "string",
+          "title": "Shipping Address"
+        },
+        "customer_id": {
+          "type": "string",
+          "title": "Customer ID"
+        }
+      },
+      "description": "Customer or client information."
+    },
+    "line_items": {
+      "type": "array",
+      "title": "Line Items",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "title": "Item Description"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "unit_price": {
+            "type": "number",
+            "title": "Unit Price"
+          },
+          "total_price": {
+            "type": "number",
+            "title": "Total Price"
+          },
+          "item_code": {
+            "type": "string",
+            "title": "Item Code/SKU"
+          },
+          "tax_rate": {
+            "type": "number",
+            "title": "Tax Rate"
+          }
+        }
+      },
+      "description": "Individual items or services listed."
+    },
+    "totals": {
+      "type": "object",
+      "title": "Financial Totals",
+      "properties": {
+        "subtotal": {
+          "type": "number",
+          "title": "Subtotal"
+        },
+        "tax_amount": {
+          "type": "number",
+          "title": "Tax Amount"
+        },
+        "discount_amount": {
+          "type": "number",
+          "title": "Discount Amount"
+        },
+        "shipping_cost": {
+          "type": "number",
+          "title": "Shipping Cost"
+        },
+        "total_amount": {
+          "type": "number",
+          "title": "Total Amount"
+        },
+        "amount_paid": {
+          "type": "number",
+          "title": "Amount Paid"
+        },
+        "balance_due": {
+          "type": "number",
+          "title": "Balance Due"
+        }
+      },
+      "description": "Summary of all financial amounts."
+    },
+    "payment_information": {
+      "type": "object",
+      "title": "Payment Information",
+      "properties": {
+        "payment_method": {
+          "type": "string",
+          "title": "Payment Method",
+          "enum": ["cash", "credit_card", "debit_card", "check", "wire_transfer", "ach", "paypal", "other"]
+        },
+        "payment_terms": {
+          "type": "string",
+          "title": "Payment Terms"
+        },
+        "bank_details": {
+          "type": "string",
+          "title": "Bank Details"
+        },
+        "transaction_id": {
+          "type": "string",
+          "title": "Transaction ID"
+        }
+      },
+      "description": "Payment method and related details."
+    },
+    "taxes": {
+      "type": "array",
+      "title": "Tax Breakdown",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tax_type": {
+            "type": "string",
+            "title": "Tax Type"
+          },
+          "tax_rate": {
+            "type": "number",
+            "title": "Tax Rate"
+          },
+          "tax_amount": {
+            "type": "number",
+            "title": "Tax Amount"
+          }
+        }
+      },
+      "description": "Detailed tax information."
+    },
+    "notes": {
+      "type": "string",
+      "title": "Additional Notes",
+      "description": "Any additional notes or comments."
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "description": "Currency code (USD, EUR, etc.)."
+    }
+  },
+  "description": "Schema for extracting structured financial data from invoices, receipts, statements, and other financial documents."
+}

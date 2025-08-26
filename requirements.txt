@@ -1,0 +1,11 @@
+# Core dependencies for all scrapers
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# Optional: Landing.ai integration (for AI-enhanced version only)
+# Uncomment the following line to enable Landing.ai features:
+# agentic-doc>=1.0.0
+
+# Development/Testing (optional)
+# pytest>=7.0.0
+# pytest-cov>=4.0.0

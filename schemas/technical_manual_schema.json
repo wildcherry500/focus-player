@@ -1,0 +1,247 @@
+{
+  "type": "object",
+  "title": "Technical Manual Field Extraction Schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "required": ["title", "sections"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Manual Title",
+      "description": "Complete title of the technical manual."
+    },
+    "version": {
+      "type": "string",
+      "title": "Version",
+      "description": "Version number or revision."
+    },
+    "product": {
+      "type": "string",
+      "title": "Product Name",
+      "description": "Product or system the manual covers."
+    },
+    "sections": {
+      "type": "array",
+      "title": "Manual Sections",
+      "items": {
+        "type": "object",
+        "properties": {
+          "section_number": {
+            "type": "string",
+            "title": "Section Number"
+          },
+          "heading": {
+            "type": "string",
+            "title": "Section Heading"
+          },
+          "content": {
+            "type": "string",
+            "title": "Section Content"
+          },
+          "subsections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "subsection_heading": {
+                  "type": "string"
+                },
+                "subsection_content": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "description": "All major sections of the manual with hierarchical structure."
+    },
+    "installation_steps": {
+      "type": "array",
+      "title": "Installation Instructions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step_number": {
+            "type": "string",
+            "title": "Step Number"
+          },
+          "instruction": {
+            "type": "string",
+            "title": "Step Instruction"
+          },
+          "warnings": {
+            "type": "string",
+            "title": "Warnings or Cautions"
+          }
+        }
+      },
+      "description": "Step-by-step installation or setup instructions."
+    },
+    "configuration_options": {
+      "type": "array",
+      "title": "Configuration Settings",
+      "items": {
+        "type": "object",
+        "properties": {
+          "setting_name": {
+            "type": "string",
+            "title": "Setting Name"
+          },
+          "default_value": {
+            "type": "string",
+            "title": "Default Value"
+          },
+          "description": {
+            "type": "string",
+            "title": "Setting Description"
+          },
+          "possible_values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Configuration parameters and options."
+    },
+    "code_examples": {
+      "type": "array",
+      "title": "Code Examples",
+      "items": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string",
+            "title": "Programming Language"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code Content"
+          },
+          "description": {
+            "type": "string",
+            "title": "Code Description"
+          },
+          "example_title": {
+            "type": "string",
+            "title": "Example Title"
+          }
+        }
+      },
+      "description": "Programming examples and code snippets."
+    },
+    "api_endpoints": {
+      "type": "array",
+      "title": "API Endpoints",
+      "items": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint URL"
+          },
+          "method": {
+            "type": "string",
+            "title": "HTTP Method",
+            "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+          },
+          "parameters": {
+            "type": "string",
+            "title": "Parameters"
+          },
+          "response": {
+            "type": "string",
+            "title": "Response Format"
+          }
+        }
+      },
+      "description": "API endpoints and specifications."
+    },
+    "troubleshooting": {
+      "type": "array",
+      "title": "Troubleshooting Guide",
+      "items": {
+        "type": "object",
+        "properties": {
+          "problem": {
+            "type": "string",
+            "title": "Problem Description"
+          },
+          "solution": {
+            "type": "string",
+            "title": "Solution"
+          },
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          }
+        }
+      },
+      "description": "Common problems and solutions."
+    },
+    "specifications": {
+      "type": "object",
+      "title": "Technical Specifications",
+      "properties": {
+        "system_requirements": {
+          "type": "string",
+          "title": "System Requirements"
+        },
+        "supported_platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "performance_metrics": {
+          "type": "string",
+          "title": "Performance Specifications"
+        }
+      },
+      "description": "Technical specifications and requirements."
+    },
+    "diagrams": {
+      "type": "array",
+      "title": "Diagrams and Flowcharts",
+      "items": {
+        "type": "object",
+        "properties": {
+          "diagram_title": {
+            "type": "string",
+            "title": "Diagram Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Diagram Description"
+          },
+          "diagram_type": {
+            "type": "string",
+            "title": "Diagram Type",
+            "enum": ["flowchart", "architecture", "network", "process", "other"]
+          }
+        }
+      },
+      "description": "Technical diagrams and flowcharts."
+    },
+    "glossary": {
+      "type": "array",
+      "title": "Glossary",
+      "items": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string",
+            "title": "Term"
+          },
+          "definition": {
+            "type": "string",
+            "title": "Definition"
+          }
+        }
+      },
+      "description": "Technical terms and definitions."
+    }
+  },
+  "description": "Comprehensive schema for extracting structured data from technical manuals including installation guides, API docs, code examples, and troubleshooting information."
+}

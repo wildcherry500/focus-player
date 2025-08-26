@@ -1,0 +1,140 @@
+{
+  "type": "object",
+  "title": "Research Paper Field Extraction Schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "required": ["title", "abstract"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Paper Title",
+      "description": "The main title of the research paper."
+    },
+    "authors": {
+      "type": "array",
+      "title": "Authors",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of paper authors with affiliations."
+    },
+    "abstract": {
+      "type": "string",
+      "title": "Abstract",
+      "description": "Complete paper abstract or summary."
+    },
+    "keywords": {
+      "type": "array",
+      "title": "Keywords",
+      "items": {
+        "type": "string"
+      },
+      "description": "Research keywords and subject areas."
+    },
+    "introduction": {
+      "type": "string",
+      "title": "Introduction",
+      "description": "Introduction section content."
+    },
+    "methodology": {
+      "type": "string",
+      "title": "Methodology",
+      "description": "Research methodology and approach."
+    },
+    "results": {
+      "type": "string",
+      "title": "Results",
+      "description": "Research results and findings."
+    },
+    "conclusion": {
+      "type": "string",
+      "title": "Conclusion",
+      "description": "Conclusions and future work."
+    },
+    "figures": {
+      "type": "array",
+      "title": "Figures and Charts",
+      "items": {
+        "type": "object",
+        "properties": {
+          "caption": {
+            "type": "string",
+            "title": "Figure Caption"
+          },
+          "description": {
+            "type": "string",
+            "title": "Figure Description"
+          },
+          "figure_number": {
+            "type": "string",
+            "title": "Figure Number"
+          }
+        }
+      },
+      "description": "All figures, charts, and graphs with captions."
+    },
+    "tables": {
+      "type": "array",
+      "title": "Tables",
+      "items": {
+        "type": "object",
+        "properties": {
+          "caption": {
+            "type": "string",
+            "title": "Table Caption"
+          },
+          "data": {
+            "type": "string",
+            "title": "Table Data"
+          },
+          "table_number": {
+            "type": "string",
+            "title": "Table Number"
+          }
+        }
+      },
+      "description": "All data tables with captions."
+    },
+    "equations": {
+      "type": "array",
+      "title": "Mathematical Equations",
+      "items": {
+        "type": "object",
+        "properties": {
+          "equation": {
+            "type": "string",
+            "title": "Equation Text"
+          },
+          "equation_number": {
+            "type": "string",
+            "title": "Equation Number"
+          }
+        }
+      },
+      "description": "Mathematical formulas and equations."
+    },
+    "references": {
+      "type": "array",
+      "title": "References",
+      "items": {
+        "type": "string"
+      },
+      "description": "Bibliography and reference list."
+    },
+    "doi": {
+      "type": "string",
+      "title": "DOI",
+      "description": "Digital Object Identifier."
+    },
+    "publication_date": {
+      "type": "string",
+      "title": "Publication Date",
+      "description": "Date of publication."
+    },
+    "journal": {
+      "type": "string",
+      "title": "Journal/Conference",
+      "description": "Name of journal or conference."
+    }
+  },
+  "description": "Comprehensive schema for extracting structured data from research papers including text, figures, tables, and metadata."
+}
