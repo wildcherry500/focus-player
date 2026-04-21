@@ -2718,7 +2718,13 @@ document.getElementById('thought-overlay').addEventListener('click',function(e){
 });
 
 // ─── SPEECH ──────────────────────────────────────────────
+var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
 var recognition=null, isRecording=false;
+
+// On iOS, set the hint text immediately so it's visible before any tap.
+if(isIOS){
+  document.getElementById('mic-hint').textContent='Tap \uD83C\uDF99 in the bottom-right of your keyboard';
+}
 
 function stopSpeech(){
   isRecording=false;
@@ -2728,9 +2734,12 @@ function stopSpeech(){
   document.getElementById('mic-hint').textContent='Tap to dictate — text appears above';
 }
 
-// Always show the button. On tap, create a fresh recognition object and start
-// synchronously within the gesture — iOS Safari requires this exact pattern.
 document.getElementById('btn-mic').addEventListener('click',function(){
+  // iOS Safari: focus the textarea so the keyboard mic key appears; skip all SR code.
+  if(isIOS){
+    document.getElementById('thought-text').focus();
+    return;
+  }
   if(isRecording){ stopSpeech(); return; }
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){
