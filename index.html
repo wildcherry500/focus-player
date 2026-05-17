@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
-<meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
 <meta name="color-scheme" content="light only" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <title>Focus Player</title>
@@ -1962,19 +1962,32 @@ function renderMyLessons() {
   }
 
   var profiles = loadProfiles();
-  // newest first
+
+  // Group by batchId (fall back to lesson.id for solo/legacy lessons without batchId)
+  var groups = {};
+  var groupOrder = [];
   lessons.slice().reverse().forEach(function(lesson) {
-    var learnerProfile = profiles.find(function(p){ return p.id === lesson.learnerId; });
-    var learnerName    = learnerProfile ? learnerProfile.name : 'Unassigned';
-    var videoCount     = (lesson.videos || []).length;
-    var clipCount      = (lesson.videos || []).reduce(function(sum, v) { return sum + normalizeVideoClips(v).length; }, 0);
-    var clipInfo       = clipCount > videoCount ? ' \u00b7 ' + clipCount + ' clips total' : '';
+    var key = lesson.batchId || lesson.id;
+    if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+    groups[key].push(lesson);
+  });
+
+  groupOrder.forEach(function(key) {
+    var group = groups[key];
+    var lesson = group[0]; // use first lesson for shared content (title, videos, etc.)
+    var learnerNames = group.map(function(l) {
+      var p = profiles.find(function(q){ return q.id === l.learnerId; });
+      return p ? p.name : 'Unassigned';
+    }).join(', ');
+    var videoCount = (lesson.videos || []).length;
+    var clipCount  = (lesson.videos || []).reduce(function(sum, v) { return sum + normalizeVideoClips(v).length; }, 0);
+    var clipInfo   = clipCount > videoCount ? ' \u00b7 ' + clipCount + ' clips total' : '';
 
     var card = document.createElement('div');
     card.className = 'ml-card';
     card.innerHTML =
       '<div class="ml-card-title">'+esc(lesson.title)+'</div>'+
-      '<div class="ml-card-meta">'+videoCount+' video'+(videoCount!==1?'s':'')+clipInfo+' \u00b7 Assigned to '+esc(learnerName)+'</div>'+
+      '<div class="ml-card-meta">'+videoCount+' video'+(videoCount!==1?'s':'')+clipInfo+' \u00b7 Assigned to '+esc(learnerNames)+'</div>'+
       '<div class="ml-card-date">Created '+fmtDate(lesson.createdAt)+(lesson.autoAdvance?' \u00b7 Auto-advance on':'')+'</div>'+
       '<div class="ml-card-actions">'+
         '<button type="button" class="ml-action-btn start" data-id="'+lesson.id+'">&#x25B6; Start</button>'+
@@ -1982,24 +1995,27 @@ function renderMyLessons() {
         '<button type="button" class="ml-action-btn delete" data-id="'+lesson.id+'">\uD83D\uDDD1 Delete</button>'+
       '</div>';
 
-    // Start
+    // Start — launch first lesson in group as curator preview
     card.querySelector('.ml-action-btn.start').addEventListener('click', function() {
       startLessonFromLibrary(lesson);
     });
 
-    // Edit
+    // Edit — open builder with all batch learners pre-checked
     card.querySelector('.ml-action-btn.edit').addEventListener('click', function() {
-      openLessonBuilderForEdit(lesson);
+      openLessonBuilderForEdit(lesson, group);
     });
 
-    // Delete
+    // Delete — remove all lessons in this batch
     card.querySelector('.ml-action-btn.delete').addEventListener('click', function() {
       if (!confirm('Delete lesson \u201c' + lesson.title + '\u201d? This cannot be undone.')) return;
-      deleteLessonById(lesson.id);
-      sbWrite(function(sb) {
-        sb.from('lesson_videos').delete().eq('lesson_id', lesson.id).then(function() {
-          sb.from('lessons').delete().eq('id', lesson.id).then(function(r) {
-            if (r.error) console.error('[deleteLesson] error', r.error);
+      group.forEach(function(l) {
+        deleteLessonById(l.id);
+        sbWrite(function(sb) {
+          var lid = l.id;
+          sb.from('lesson_videos').delete().eq('lesson_id', lid).then(function() {
+            sb.from('lessons').delete().eq('id', lid).then(function(r) {
+              if (r.error) console.error('[deleteLesson] error', r.error);
+            });
           });
         });
       });
@@ -2025,11 +2041,17 @@ document.getElementById('my-lessons-overlay').addEventListener('click', function
 var autoAdvanceOn        = false;
 var pauseBetweenClipsOn  = false;
 var editingLessonId      = null;
+var editingBatchId       = null;
 var activeLessonClipIdx  = 0;
 var clipBoundaryTriggered = false;
 var lessonDraft          = { title: '' };
 
-function populateLearnerList(preCheckedId) {
+function populateLearnerList(preCheckedIds) {
+  var checkedSet = {};
+  if (preCheckedIds) {
+    var ids = Array.isArray(preCheckedIds) ? preCheckedIds : [preCheckedIds];
+    ids.forEach(function(id){ if (id) checkedSet[id] = true; });
+  }
   var container = document.getElementById('lb-learner-list');
   container.innerHTML = '';
   var profiles = loadProfiles();
@@ -2050,7 +2072,7 @@ function populateLearnerList(preCheckedId) {
     cb.type = 'checkbox';
     cb.id = uid;
     cb.value = p.id;
-    if (preCheckedId && p.id === preCheckedId) cb.checked = true;
+    if (checkedSet[p.id]) cb.checked = true;
     var av = document.createElement('span');
     av.className = 'lb-learner-item-avatar';
     av.style.background = p.color;
@@ -2074,6 +2096,7 @@ function getCheckedLearnerIds() {
 
 function openLessonBuilder() {
   editingLessonId = null;
+  editingBatchId  = null;
   document.getElementById('lb-save').textContent = 'Save \u0026 Start Lesson \u2192';
   populateLearnerList(null);
   document.getElementById('lb-title').value = '';
@@ -2101,15 +2124,18 @@ function closeLessonBuilder() {
   document.getElementById('lesson-builder-overlay').classList.remove('open');
 }
 
-function openLessonBuilderForEdit(lesson) {
+function openLessonBuilderForEdit(lesson, batchLessons) {
+  var batch = batchLessons || [lesson];
   lessonDraft = { title: '' }; // don't let a new-lesson draft override edit data
   closeMyLessons();
   openLessonBuilder(); // resets all fields, adds one blank entry
   editingLessonId = lesson.id;
+  editingBatchId  = lesson.batchId || null;
   document.getElementById('lb-save').textContent = 'Save Changes';
   document.getElementById('lb-title').value = lesson.title;
-  // Pre-check the assigned learner checkbox
-  populateLearnerList(lesson.learnerId || null);
+  // Pre-check all assigned learner checkboxes for this batch
+  var batchLearnerIds = batch.map(function(l){ return l.learnerId; }).filter(Boolean);
+  populateLearnerList(batchLearnerIds.length ? batchLearnerIds : (lesson.learnerId || null));
   // Auto-advance toggle
   autoAdvanceOn = lesson.autoAdvance || false;
   document.getElementById('lb-toggle-on').classList.toggle('active',  autoAdvanceOn);
@@ -2555,38 +2581,105 @@ document.getElementById('lb-save').addEventListener('click', function() {
   var lessonNotes = (document.getElementById('lb-lesson-notes').value || '').trim();
 
   if (editingLessonId) {
-    // ── EDIT MODE — update the single existing lesson ──────
-    var existing = loadAllLessons().find(function(l){ return l.id === editingLessonId; });
-    var updatedLesson = {
-      id:               editingLessonId,
-      curatorId:        existing ? existing.curatorId : activeProfile.id,
-      learnerId:        learnerIds[0] || (existing ? existing.learnerId : ''),
-      status:           existing ? (existing.status || 'new') : 'new',
-      title:            title,
-      autoAdvance:      autoAdvanceOn,
-      pauseBetweenClips: pauseBetweenClipsOn,
-      notes:            lessonNotes,
-      createdAt:        existing ? existing.createdAt : new Date().toISOString(),
-      videos:           videos
-    };
-    updateLessonById(updatedLesson);
-    if (activeLessonData && activeLessonData.id === updatedLesson.id) {
-      activeLessonData.autoAdvance = updatedLesson.autoAdvance;
-      activeLessonData.pauseBetweenClips = updatedLesson.pauseBetweenClips;
+    // ── EDIT MODE ──────────────────────────────────────────
+    var editNow = Date.now();
+    if (editingBatchId) {
+      // Batch edit: update content for all existing batch lessons,
+      // add new lessons for newly-selected learners, remove deselected ones.
+      var allLessons = loadAllLessons();
+      var batchMembers = allLessons.filter(function(l) {
+        return l.batchId === editingBatchId && l.curatorId === activeProfile.id;
+      });
+      var existingLearnerIds = batchMembers.map(function(l){ return l.learnerId; });
+
+      batchMembers.forEach(function(bl) {
+        if (learnerIds.indexOf(bl.learnerId) !== -1) {
+          // Learner still assigned — update content
+          var updated = {
+            id:               bl.id,
+            batchId:          editingBatchId,
+            curatorId:        bl.curatorId,
+            learnerId:        bl.learnerId,
+            status:           bl.status || 'new',
+            title:            title,
+            autoAdvance:      autoAdvanceOn,
+            pauseBetweenClips: pauseBetweenClipsOn,
+            notes:            lessonNotes,
+            createdAt:        bl.createdAt,
+            videos:           videos
+          };
+          updateLessonById(updated);
+          updateLessonInSupabase(updated, videos);
+        } else {
+          // Learner removed from assignment — delete their lesson
+          deleteLessonById(bl.id);
+          sbWrite(function(sb) {
+            var lid = bl.id;
+            sb.from('lesson_videos').delete().eq('lesson_id', lid).then(function() {
+              sb.from('lessons').delete().eq('id', lid);
+            });
+          });
+        }
+      });
+
+      // Add lessons for newly-selected learners not already in the batch
+      learnerIds.forEach(function(lid, li) {
+        if (existingLearnerIds.indexOf(lid) === -1) {
+          var newId = 'lesson_' + editNow + '_add_' + li;
+          var newLesson = {
+            id:               newId,
+            batchId:          editingBatchId,
+            curatorId:        activeProfile.id,
+            learnerId:        lid,
+            status:           'new',
+            title:            title,
+            autoAdvance:      autoAdvanceOn,
+            pauseBetweenClips: pauseBetweenClipsOn,
+            notes:            lessonNotes,
+            createdAt:        new Date().toISOString(),
+            videos:           videos
+          };
+          saveNewLesson(newLesson);
+          saveLessonToSupabase(newLesson, videos);
+        }
+      });
+    } else {
+      // Single lesson edit (no batch)
+      var existing = loadAllLessons().find(function(l){ return l.id === editingLessonId; });
+      var updatedLesson = {
+        id:               editingLessonId,
+        curatorId:        existing ? existing.curatorId : activeProfile.id,
+        learnerId:        learnerIds[0] || (existing ? existing.learnerId : ''),
+        status:           existing ? (existing.status || 'new') : 'new',
+        title:            title,
+        autoAdvance:      autoAdvanceOn,
+        pauseBetweenClips: pauseBetweenClipsOn,
+        notes:            lessonNotes,
+        createdAt:        existing ? existing.createdAt : new Date().toISOString(),
+        videos:           videos
+      };
+      updateLessonById(updatedLesson);
+      if (activeLessonData && activeLessonData.id === updatedLesson.id) {
+        activeLessonData.autoAdvance = updatedLesson.autoAdvance;
+        activeLessonData.pauseBetweenClips = updatedLesson.pauseBetweenClips;
+      }
+      updateLessonInSupabase(updatedLesson, videos);
     }
-    updateLessonInSupabase(updatedLesson, videos);
     editingLessonId = null;
+    editingBatchId  = null;
     closeLessonBuilder();
     openMyLessons();
   } else {
     // ── CREATE MODE — one lesson per selected learner ──────
     var now = Date.now();
+    var batchId = 'lesson_' + now;
     var firstLesson = null;
     for (var li = 0; li < learnerIds.length; li++) {
       var lId = learnerIds[li];
       var lessonId = 'lesson_' + now + '_' + li;
       var lesson = {
         id:               lessonId,
+        batchId:          batchId,
         curatorId:        activeProfile.id,
         learnerId:        lId,
         status:           'new',
@@ -2605,7 +2698,7 @@ document.getElementById('lb-save').addEventListener('click', function() {
     if (learnerIds.length === 1) {
       launchLessonFresh(firstLesson);
     } else {
-      setStatus('Lessons created for ' + learnerIds.length + ' learners.');
+      openMyLessons();
     }
   }
 });
