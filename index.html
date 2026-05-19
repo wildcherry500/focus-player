@@ -2645,10 +2645,13 @@ document.getElementById('lb-save').addEventListener('click', function() {
         }
       });
     } else {
-      // Single lesson edit (no batch)
+      // Single lesson edit (no batch) — promote to batch if multiple learners selected
       var existing = loadAllLessons().find(function(l){ return l.id === editingLessonId; });
+      var assignedBatchId = (existing && existing.batchId) ? existing.batchId : editingLessonId;
+      var editNow2 = Date.now();
       var updatedLesson = {
         id:               editingLessonId,
+        batchId:          assignedBatchId,
         curatorId:        existing ? existing.curatorId : activeProfile.id,
         learnerId:        learnerIds[0] || (existing ? existing.learnerId : ''),
         status:           existing ? (existing.status || 'new') : 'new',
@@ -2665,6 +2668,25 @@ document.getElementById('lb-save').addEventListener('click', function() {
         activeLessonData.pauseBetweenClips = updatedLesson.pauseBetweenClips;
       }
       updateLessonInSupabase(updatedLesson, videos);
+      // Create lessons for any additional learners newly added to this batch
+      for (var li2 = 1; li2 < learnerIds.length; li2++) {
+        var newId2 = 'lesson_' + editNow2 + '_add_' + li2;
+        var newLesson2 = {
+          id:               newId2,
+          batchId:          assignedBatchId,
+          curatorId:        activeProfile.id,
+          learnerId:        learnerIds[li2],
+          status:           'new',
+          title:            title,
+          autoAdvance:      autoAdvanceOn,
+          pauseBetweenClips: pauseBetweenClipsOn,
+          notes:            lessonNotes,
+          createdAt:        new Date().toISOString(),
+          videos:           videos
+        };
+        saveNewLesson(newLesson2);
+        saveLessonToSupabase(newLesson2, videos);
+      }
     }
     editingLessonId = null;
     editingBatchId  = null;
@@ -3263,6 +3285,7 @@ function saveLessonToSupabase(lesson, videos) {
   sbWrite(function(sb) {
     sb.from('lessons').insert([{
       id:                 lesson.id,
+      batch_id:           lesson.batchId || null,
       curator_id:         lesson.curatorId,
       learner_id:         lesson.learnerId || null,
       title:              lesson.title,
@@ -3299,6 +3322,7 @@ function updateLessonInSupabase(lesson, videos) {
   sbWrite(function(sb) {
     sb.from('lessons').upsert([{
       id:                  lesson.id,
+      batch_id:            lesson.batchId || null,
       curator_id:          lesson.curatorId,
       learner_id:          lesson.learnerId || null,
       title:               lesson.title,
@@ -3381,6 +3405,7 @@ function fetchLearnerLessonsFromSupabase(learnerId) {
                               : 'new';
               local.push({
                 id:               row.id,
+                batchId:          row.batch_id || row.id,
                 curatorId:        row.curator_id,
                 learnerId:        row.learner_id,
                 status:           localStatus,
