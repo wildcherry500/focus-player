@@ -4164,11 +4164,17 @@ function showPreviewPage(token) {
         return;
       }
       var lesson = r.data[0];
-      sb.from('lesson_videos')
-        .select('video_id, video_title, video_url, start_seconds, end_seconds, clips, notes, position')
-        .eq('lesson_id', lesson.id)
-        .order('position', { ascending: true })
-        .then(function(rv) {
+
+      function fetchAndRenderVideos(lessonIds) {
+        var query = sb.from('lesson_videos')
+          .select('video_id, video_title, video_url, start_seconds, end_seconds, clips, notes, position')
+          .order('position', { ascending: true });
+        if (lessonIds.length === 1) {
+          query = query.eq('lesson_id', lessonIds[0]);
+        } else {
+          query = query.in('lesson_id', lessonIds);
+        }
+        query.then(function(rv) {
           var videos = [];
           if (!rv.error && rv.data) {
             videos = rv.data.map(function(v) {
@@ -4187,6 +4193,25 @@ function showPreviewPage(token) {
           previewVideos     = videos;
           renderPreviewPage(screen, lesson, videos, token);
         });
+      }
+
+      // If the lesson has a batch_id, fetch videos across all batch members —
+      // videos may have been saved under a different batch member's id
+      if (lesson.batch_id) {
+        console.log('[preview] batch_id found:', lesson.batch_id, '— fetching all batch lesson ids');
+        sb.from('lessons')
+          .select('id')
+          .eq('batch_id', lesson.batch_id)
+          .then(function(rb) {
+            var ids = (!rb.error && rb.data && rb.data.length)
+              ? rb.data.map(function(l) { return l.id; })
+              : [lesson.id];
+            console.log('[preview] fetching lesson_videos for ids:', ids);
+            fetchAndRenderVideos(ids);
+          });
+      } else {
+        fetchAndRenderVideos([lesson.id]);
+      }
     });
 }
 
