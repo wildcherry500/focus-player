@@ -4417,11 +4417,11 @@ function importSharedLesson(lesson, videos, learnerId, onComplete) {
   function mapVideos(rows) {
     return rows.map(function(v) {
       return {
-        videoId:       v.video_id,
-        videoTitle:    v.video_title || v.video_id,
-        videoUrl:      v.video_url || '',
+        videoId:       v.video_id   || v.videoId,
+        videoTitle:    v.video_title || v.videoTitle || v.video_id || v.videoId,
+        videoUrl:      v.video_url  || v.videoUrl  || '',
         start_seconds: v.start_seconds || 0,
-        end_seconds:   v.end_seconds || null,
+        end_seconds:   v.end_seconds   || null,
         clips:         v.clips || [{ start_seconds: v.start_seconds || 0, end_seconds: v.end_seconds || null }],
         notes:         v.notes || ''
       };
@@ -4441,7 +4441,7 @@ function importSharedLesson(lesson, videos, learnerId, onComplete) {
 
   function fetchByIds(ids) {
     var q = sb.from('lesson_videos')
-      .select('video_id, video_title, video_url, start_seconds, end_seconds, clips, notes, position')
+      .select('id, lesson_id, video_id, video_title, video_url, position, clips, start_seconds, end_seconds, notes')
       .order('position', { ascending: true });
     q = (ids.length === 1) ? q.eq('lesson_id', ids[0]) : q.in('lesson_id', ids);
     q.then(function(rv) {
