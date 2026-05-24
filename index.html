@@ -3942,15 +3942,32 @@ document.getElementById('btn-generate-share').addEventListener('click', function
   shareModalLesson.shareNotes = includeNotes;
 
   // Persist to Supabase for all batch members
+  // NOTE: requires ALTER TABLE lessons ADD COLUMN share_token TEXT,
+  //       ADD COLUMN is_public BOOLEAN DEFAULT FALSE,
+  //       ADD COLUMN share_notes BOOLEAN DEFAULT FALSE
   shareModalGroup.forEach(function(gl) {
     sbWrite(function(sb) {
       var lid = gl.id;
-      sb.from('lessons').update({
-        share_token:  token,
-        is_public:    true,
-        share_notes:  includeNotes
-      }).eq('id', lid).then(function(r) {
-        if (r.error) console.error('[shareLesson] Supabase error', r.error);
+      var payload = { share_token: token, is_public: true, share_notes: includeNotes };
+      console.log('[share] Updating lesson', lid, 'payload:', JSON.stringify(payload));
+      sb.from('lessons').update(payload).eq('id', lid).then(function(r) {
+        if (r.error) {
+          console.error('[share] Supabase update FAILED for lesson', lid, r.error);
+          // Surface the error in the modal so it's not silent
+          var msg = document.getElementById('sm-copied-msg');
+          if (msg) {
+            msg.textContent = 'Save failed \u2014 check console';
+            msg.style.color = 'var(--red)';
+            msg.classList.add('show');
+            setTimeout(function() {
+              msg.classList.remove('show');
+              msg.style.color = '';
+              msg.textContent = '\u2713 Link copied!';
+            }, 4000);
+          }
+        } else {
+          console.log('[share] Supabase update OK for lesson', lid);
+        }
       });
     });
   });
@@ -4062,6 +4079,7 @@ function showPreviewPage(token) {
     renderPreviewConnError(screen);
   }, 12000);
 
+  console.log('[preview] Fetching lesson for share_token:', token);
   sb.from('lessons')
     .select('id, batch_id, curator_id, learner_id, title, notes, share_notes, auto_advance, pause_between_clips, status, created_at')
     .eq('share_token', token)
@@ -4069,8 +4087,14 @@ function showPreviewPage(token) {
     .limit(1)
     .then(function(r) {
       clearTimeout(fetchTimeout);
+      console.log('[preview] Supabase result — error:', r.error, '| rows:', r.data ? r.data.length : 'null');
       if (r.error || !r.data || !r.data.length) {
-        renderPreviewError(screen);
+        if (r.error) {
+          console.error('[preview] Query error details:', r.error);
+          renderPreviewConnError(screen);
+        } else {
+          renderPreviewError(screen);
+        }
         return;
       }
       var lesson = r.data[0];
