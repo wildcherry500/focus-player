@@ -951,6 +951,74 @@
   .ml-action-btn.start:hover { background: #2d4ab5; border-color: #2d4ab5; }
   .ml-action-btn.edit:hover { background: var(--fg); color: #fff; border-color: var(--fg); }
   .ml-action-btn.delete:hover { background: var(--red); color: #fff; border-color: var(--red); }
+  .ml-action-btn.share:hover { background: var(--green); color: #fff; border-color: var(--green); }
+
+  /* ═══════════════════════════════════════
+     SHARE MODAL
+  ═══════════════════════════════════════ */
+  #share-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.72); z-index: 400;
+    align-items: center; justify-content: center; padding: 1rem;
+  }
+  #share-overlay.open { display: flex; }
+  #share-modal {
+    background: var(--card); border: 2px solid var(--border);
+    width: 100%; max-width: 460px; overflow: hidden;
+    animation: slideUp 0.2s ease;
+  }
+  .sm-header {
+    background: var(--fg); color: #fff; padding: 0.7rem 1rem;
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .sm-header-title { font-family: 'Space Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; flex: 1; }
+  .sm-close { background: none; border: none; color: #fff; font-size: 1rem; cursor: pointer; opacity: 0.7; padding: 0 0.15rem; }
+  .sm-close:hover { opacity: 1; }
+  .sm-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  .sm-lesson-title { font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 600; color: var(--fg); }
+  .sm-toggle-row { display: flex; align-items: center; gap: 0.75rem; }
+  .sm-toggle-label { font-family: 'Space Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); flex: 1; }
+  .sm-toggle { position: relative; display: inline-block; width: 38px; height: 21px; flex-shrink: 0; }
+  .sm-toggle input { opacity: 0; width: 0; height: 0; }
+  .sm-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #ccc; transition: 0.2s; border-radius: 21px;
+  }
+  .sm-slider:before {
+    position: absolute; content: ''; height: 15px; width: 15px;
+    left: 3px; bottom: 3px; background: #fff;
+    transition: 0.2s; border-radius: 50%;
+  }
+  .sm-toggle input:checked + .sm-slider { background: var(--cobalt); }
+  .sm-toggle input:checked + .sm-slider:before { transform: translateX(17px); }
+  #btn-generate-share {
+    font-family: 'Space Mono', monospace; font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 0.55rem 1rem; background: var(--cobalt); color: #fff;
+    border: none; cursor: pointer; transition: background 0.12s; width: 100%; min-height: 40px;
+  }
+  #btn-generate-share:hover { background: #2d4ab5; }
+  .sm-link-section { display: none; flex-direction: column; gap: 0.5rem; }
+  .sm-link-section.visible { display: flex; }
+  .sm-link-row { display: flex; gap: 0.5rem; }
+  #share-url-field {
+    flex: 1; font-family: 'Space Mono', monospace; font-size: 0.68rem;
+    border: 1.5px solid var(--border); padding: 0.4rem 0.6rem;
+    background: var(--bg); color: var(--fg); outline: none; min-width: 0;
+  }
+  #btn-copy-link {
+    font-family: 'Space Mono', monospace; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.4rem 0.75rem; background: var(--green); color: #fff;
+    border: none; cursor: pointer; white-space: nowrap; transition: background 0.12s; min-height: 40px;
+  }
+  #btn-copy-link:hover { background: #1b4332; }
+  .sm-copied-msg {
+    font-family: 'Space Mono', monospace; font-size: 0.65rem;
+    color: var(--green); letter-spacing: 0.04em;
+    opacity: 0; transition: opacity 0.2s; min-height: 1em;
+  }
+  .sm-copied-msg.show { opacity: 1; }
 
   /* ═══════════════════════════════════════
      RESPONSIVE — TABLET  (≤ 768px)
@@ -1580,6 +1648,34 @@
   </div>
 </div>
 
+<!-- SHARE MODAL -->
+<div id="share-overlay">
+  <div id="share-modal">
+    <div class="sm-header">
+      <span class="sm-header-title">&#x1F517; Share Lesson</span>
+      <button type="button" class="sm-close" id="btn-share-close">&#x2715;</button>
+    </div>
+    <div class="sm-body">
+      <div class="sm-lesson-title" id="sm-lesson-title"></div>
+      <div class="sm-toggle-row">
+        <span class="sm-toggle-label">Include my teaching notes</span>
+        <label class="sm-toggle">
+          <input type="checkbox" id="sm-include-notes" />
+          <span class="sm-slider"></span>
+        </label>
+      </div>
+      <button type="button" id="btn-generate-share">&#x1F517; Generate Share Link</button>
+      <div class="sm-link-section" id="sm-link-section">
+        <div class="sm-link-row">
+          <input type="text" id="share-url-field" readonly />
+          <button type="button" id="btn-copy-link">Copy Link</button>
+        </div>
+        <div class="sm-copied-msg" id="sm-copied-msg">&#x2713; Link copied!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- BETWEEN-CLIP OVERLAY -->
 <div id="between-clip-overlay">
   <div id="between-clip-modal">
@@ -1993,6 +2089,7 @@ function renderMyLessons() {
       '<div class="ml-card-actions">'+
         '<button type="button" class="ml-action-btn start" data-id="'+lesson.id+'">&#x25B6; Start</button>'+
         '<button type="button" class="ml-action-btn edit"  data-id="'+lesson.id+'">\u270F\uFE0F Edit</button>'+
+        '<button type="button" class="ml-action-btn share" data-id="'+lesson.id+'">\uD83D\uDD17 Share</button>'+
         '<button type="button" class="ml-action-btn delete" data-id="'+lesson.id+'">\uD83D\uDDD1 Delete</button>'+
       '</div>';
 
@@ -2021,6 +2118,11 @@ function renderMyLessons() {
         });
       });
       renderMyLessons();
+    });
+
+    // Share — open share modal for this lesson batch
+    card.querySelector('.ml-action-btn.share').addEventListener('click', function() {
+      openShareModal(lesson, group);
     });
 
     body.appendChild(card);
@@ -3602,6 +3704,104 @@ function renderNotes(){
     list.appendChild(item);
   });
 }
+
+// ═══════════════════════════════════════════════════════════
+// SHARE MODAL
+// ═══════════════════════════════════════════════════════════
+var shareModalLesson = null;
+var shareModalGroup  = null;
+
+function generateShareToken(title) {
+  var slug = title.trim().toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .join('-');
+  var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  var rand = '';
+  for (var i = 0; i < 6; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  return slug + '-' + rand;
+}
+
+function openShareModal(lesson, group) {
+  shareModalLesson = lesson;
+  shareModalGroup  = group || [lesson];
+  document.getElementById('sm-lesson-title').textContent = lesson.title;
+  document.getElementById('sm-include-notes').checked = lesson.shareNotes || false;
+  document.getElementById('sm-copied-msg').classList.remove('show');
+  var linkSection = document.getElementById('sm-link-section');
+  if (lesson.shareToken) {
+    document.getElementById('share-url-field').value = 'https://focusplayermvp.netlify.app?share=' + lesson.shareToken;
+    linkSection.classList.add('visible');
+  } else {
+    linkSection.classList.remove('visible');
+    document.getElementById('share-url-field').value = '';
+  }
+  document.getElementById('share-overlay').classList.add('open');
+}
+
+function closeShareModal() {
+  document.getElementById('share-overlay').classList.remove('open');
+  shareModalLesson = null;
+  shareModalGroup  = null;
+}
+
+document.getElementById('btn-share-close').addEventListener('click', closeShareModal);
+document.getElementById('share-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeShareModal();
+});
+
+document.getElementById('btn-generate-share').addEventListener('click', function() {
+  if (!shareModalLesson) return;
+  var token = shareModalLesson.shareToken || generateShareToken(shareModalLesson.title);
+  var includeNotes = document.getElementById('sm-include-notes').checked;
+  var shareUrl = 'https://focusplayermvp.netlify.app?share=' + token;
+
+  // Update localStorage for all lessons in batch
+  var all = loadAllLessons();
+  shareModalGroup.forEach(function(gl) {
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === gl.id) {
+        all[i].shareToken  = token;
+        all[i].isPublic    = true;
+        all[i].shareNotes  = includeNotes;
+        break;
+      }
+    }
+  });
+  saveAllLessons(all);
+  shareModalLesson.shareToken = token;
+  shareModalLesson.isPublic   = true;
+  shareModalLesson.shareNotes = includeNotes;
+
+  // Persist to Supabase for all batch members
+  shareModalGroup.forEach(function(gl) {
+    sbWrite(function(sb) {
+      var lid = gl.id;
+      sb.from('lessons').update({
+        share_token:  token,
+        is_public:    true,
+        share_notes:  includeNotes
+      }).eq('id', lid).then(function(r) {
+        if (r.error) console.error('[shareLesson] Supabase error', r.error);
+      });
+    });
+  });
+
+  document.getElementById('share-url-field').value = shareUrl;
+  document.getElementById('sm-link-section').classList.add('visible');
+});
+
+document.getElementById('btn-copy-link').addEventListener('click', function() {
+  var field = document.getElementById('share-url-field');
+  field.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  if (navigator.clipboard) { navigator.clipboard.writeText(field.value).catch(function(){}); }
+  var msg = document.getElementById('sm-copied-msg');
+  msg.classList.add('show');
+  setTimeout(function() { msg.classList.remove('show'); }, 2000);
+});
 
 // ═══════════════════════════════════════════════════════════
 // INIT — show profile screen or jump straight to player
