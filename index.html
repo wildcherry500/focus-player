@@ -1021,6 +1021,97 @@
   .sm-copied-msg.show { opacity: 1; }
 
   /* ═══════════════════════════════════════
+     SHARE PREVIEW PAGE
+  ═══════════════════════════════════════ */
+  #share-preview-screen {
+    display: none;
+    width: 100%; max-width: 600px;
+    flex-direction: column; gap: 1.5rem;
+  }
+  .sp-header { text-align: center; padding: 1rem 0 0.25rem; }
+  .sp-logo {
+    font-family: 'Space Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 0.5rem; justify-content: center; margin-bottom: 0.5rem;
+  }
+  .sp-subtitle {
+    font-family: 'Space Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--cobalt);
+  }
+  .sp-card { background: var(--card); border: 2px solid var(--border); overflow: hidden; }
+  .sp-card-header { background: var(--fg); color: #fff; padding: 1rem 1.25rem; }
+  .sp-title { font-family: 'DM Sans', sans-serif; font-size: 1.3rem; font-weight: 600; line-height: 1.3; margin-bottom: 0.35rem; }
+  .sp-curator { font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.05em; opacity: 0.6; }
+  .sp-body { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+  .sp-stats { display: flex; gap: 1.75rem; flex-wrap: wrap; padding-bottom: 0.5rem; border-bottom: 1px solid #eee; }
+  .sp-stat { display: flex; flex-direction: column; gap: 0.1rem; }
+  .sp-stat-val { font-family: 'Space Mono', monospace; font-size: 1.05rem; font-weight: 700; color: var(--fg); }
+  .sp-stat-label { font-family: 'Space Mono', monospace; font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .sp-videos-label { font-family: 'Space Mono', monospace; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .sp-video-list { display: flex; flex-direction: column; }
+  .sp-video-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; border-bottom: 1px solid #f0ede6; }
+  .sp-video-item:last-child { border-bottom: none; }
+  .sp-video-num { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--muted); min-width: 18px; }
+  .sp-video-title { flex: 1; font-size: 0.88rem; color: var(--fg); font-weight: 500; }
+  .sp-video-clips { font-family: 'Space Mono', monospace; font-size: 0.58rem; color: var(--cobalt); background: var(--cobalt-tint); padding: 0.1rem 0.4rem; border-radius: 999px; white-space: nowrap; }
+  .sp-notes-section { background: #fffbf0; border: 1px solid #f4a261; padding: 0.75rem 1rem; }
+  .sp-notes-label { font-family: 'Space Mono', monospace; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: #b45309; margin-bottom: 0.45rem; }
+  .sp-notes-text { font-size: 0.88rem; color: #444; line-height: 1.55; white-space: pre-wrap; }
+  .sp-cta { background: var(--card); border: 2px solid var(--border); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.65rem; text-align: center; }
+  .sp-cta-btn {
+    font-family: 'Space Mono', monospace; font-size: 0.75rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 0.75rem 1.5rem; border: none; cursor: pointer;
+    transition: background 0.12s; width: 100%; min-height: 48px;
+  }
+  .sp-cta-btn.returning { background: var(--cobalt); color: #fff; }
+  .sp-cta-btn.returning:hover { background: #2d4ab5; }
+  .sp-cta-btn.new-user { background: var(--accent); color: #fff; }
+  .sp-cta-btn.new-user:hover { background: #e07b3a; }
+  .sp-cta-sub { font-family: 'Space Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.04em; }
+  .sp-cta-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+  .sp-footer { text-align: center; padding: 0.25rem; }
+  .sp-footer-text { font-family: 'Space Mono', monospace; font-size: 0.56rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+  .sp-error { text-align: center; padding: 2.5rem 1rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+  .sp-error-icon { font-size: 2.2rem; line-height: 1; }
+  .sp-error-msg { font-family: 'Space Mono', monospace; font-size: 0.72rem; letter-spacing: 0.05em; color: var(--muted); }
+  .sp-loading { text-align: center; padding: 3rem 1rem; font-family: 'Space Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em; color: var(--muted); }
+
+  /* ASSIGN LEARNER OVERLAY */
+  #assign-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.72); z-index: 500;
+    align-items: center; justify-content: center; padding: 1rem;
+  }
+  #assign-overlay.open { display: flex; }
+  #assign-modal {
+    background: var(--card); border: 2px solid var(--border);
+    width: 100%; max-width: 380px; overflow: hidden;
+    animation: slideUp 0.2s ease;
+  }
+  .assign-header {
+    background: var(--fg); color: #fff; padding: 0.7rem 1rem;
+    font-family: 'Space Mono', monospace; font-size: 0.72rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .assign-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .assign-label { font-family: 'Space Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  #assign-select {
+    width: 100%; font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
+    border: 1.5px solid var(--border); padding: 0.45rem 0.65rem;
+    outline: none; background: var(--bg); color: var(--fg); cursor: pointer;
+  }
+  .assign-footer { display: flex; border-top: 2px solid var(--border); }
+  .assign-btn {
+    flex: 1; padding: 0.7rem; font-family: 'Space Mono', monospace; font-size: 0.75rem;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; border: none; cursor: pointer;
+  }
+  #assign-cancel { background: var(--bg); color: var(--muted); border-right: 2px solid var(--border); }
+  #assign-cancel:hover { background: #eee; }
+  #assign-confirm { background: var(--cobalt); color: #fff; }
+  #assign-confirm:hover { background: #2d4ab5; }
+
+  /* ═══════════════════════════════════════
      RESPONSIVE — TABLET  (≤ 768px)
   ═══════════════════════════════════════ */
   @media (max-width: 768px) {
@@ -1421,6 +1512,11 @@
 <div class="header"><span class="dot"></span> Focus Player <span class="dot"></span></div>
 
 <!-- ═══════════════════════════════════════
+     SHARE PREVIEW SCREEN
+═══════════════════════════════════════ -->
+<div id="share-preview-screen"></div>
+
+<!-- ═══════════════════════════════════════
      PROFILE SELECT SCREEN
 ═══════════════════════════════════════ -->
 <div id="profile-screen">
@@ -1648,6 +1744,21 @@
   </div>
 </div>
 
+<!-- ASSIGN LEARNER OVERLAY -->
+<div id="assign-overlay">
+  <div id="assign-modal">
+    <div class="assign-header">Add Lesson to My Queue</div>
+    <div class="assign-body">
+      <div class="assign-label">Assign to which learner?</div>
+      <select id="assign-select"></select>
+    </div>
+    <div class="assign-footer">
+      <button class="assign-btn" id="assign-cancel">Cancel</button>
+      <button class="assign-btn" id="assign-confirm">Add to My Lessons &#x2713;</button>
+    </div>
+  </div>
+</div>
+
 <!-- SHARE MODAL -->
 <div id="share-overlay">
   <div id="share-modal">
@@ -1834,6 +1945,8 @@ document.getElementById('ap-save').addEventListener('click', function() {
   saveProfiles(profiles);
   closeAddProfile();
   renderProfileScreen();
+  // Auto-import any pending shared lesson from sessionStorage
+  checkPendingShareImport(newProfile);
 });
 document.getElementById('ap-name').addEventListener('keydown', function(e) {
   if (e.key==='Enter') document.getElementById('ap-save').click();
@@ -3804,22 +3917,301 @@ document.getElementById('btn-copy-link').addEventListener('click', function() {
 });
 
 // ═══════════════════════════════════════════════════════════
+// SHARE PREVIEW PAGE
+// ═══════════════════════════════════════════════════════════
+var previewLessonData = null;
+var previewVideos     = null;
+
+function showPreviewPage(token) {
+  document.getElementById('profile-screen').style.display = 'none';
+  document.getElementById('player-screen').style.display  = 'none';
+  document.querySelector('.header').style.display         = 'none';
+  var screen = document.getElementById('share-preview-screen');
+  screen.style.display = 'flex';
+
+  screen.innerHTML =
+    '<div class="sp-header">' +
+      '<div class="sp-logo"><span class="dot"></span> Focus Player <span class="dot"></span></div>' +
+      '<div class="sp-subtitle">&#x1F517; Shared Lesson</div>' +
+    '</div>' +
+    '<div class="sp-loading">Loading lesson\u2026</div>';
+
+  if (!sb) {
+    renderPreviewError(screen);
+    return;
+  }
+
+  sb.from('lessons')
+    .select('id, batch_id, curator_id, learner_id, title, notes, share_notes, auto_advance, pause_between_clips, status, created_at')
+    .eq('share_token', token)
+    .eq('is_public', true)
+    .limit(1)
+    .then(function(r) {
+      if (r.error || !r.data || !r.data.length) {
+        renderPreviewError(screen);
+        return;
+      }
+      var lesson = r.data[0];
+      sb.from('lesson_videos')
+        .select('video_id, video_title, video_url, start_seconds, end_seconds, clips, notes, position')
+        .eq('lesson_id', lesson.id)
+        .order('position', { ascending: true })
+        .then(function(rv) {
+          var videos = [];
+          if (!rv.error && rv.data) {
+            videos = rv.data.map(function(v) {
+              return {
+                videoId:       v.video_id,
+                videoTitle:    v.video_title || v.video_id,
+                videoUrl:      v.video_url || '',
+                start_seconds: v.start_seconds || 0,
+                end_seconds:   v.end_seconds || null,
+                clips:         v.clips || [{ start_seconds: v.start_seconds || 0, end_seconds: v.end_seconds || null }],
+                notes:         v.notes || ''
+              };
+            });
+          }
+          previewLessonData = lesson;
+          previewVideos     = videos;
+          renderPreviewPage(screen, lesson, videos, token);
+        });
+    });
+}
+
+function renderPreviewError(screen) {
+  screen.innerHTML =
+    '<div class="sp-header">' +
+      '<div class="sp-logo"><span class="dot"></span> Focus Player <span class="dot"></span></div>' +
+      '<div class="sp-subtitle">&#x1F517; Shared Lesson</div>' +
+    '</div>' +
+    '<div class="sp-card"><div class="sp-body"><div class="sp-error">' +
+      '<div class="sp-error-icon">\uD83D\uDD17</div>' +
+      '<div class="sp-error-msg">This lesson link is no longer active.</div>' +
+    '</div></div></div>' +
+    '<div class="sp-footer"><div class="sp-footer-text">Made with Focus Player \u2014 focusplayermvp.netlify.app &middot; Red Planet Labs</div></div>';
+}
+
+function renderPreviewPage(screen, lesson, videos, token) {
+  // Calculate aggregate stats
+  var totalClips = 0;
+  var totalSecs  = 0;
+  videos.forEach(function(v) {
+    var clips = (v.clips && v.clips.length) ? v.clips
+      : [{ start_seconds: v.start_seconds || 0, end_seconds: v.end_seconds || null }];
+    totalClips += clips.length;
+    clips.forEach(function(c) {
+      if (c.start_seconds != null && c.end_seconds != null && c.end_seconds > c.start_seconds) {
+        totalSecs += (c.end_seconds - c.start_seconds);
+      }
+    });
+  });
+
+  var totalMin = Math.floor(totalSecs / 60);
+  var totalSec = Math.round(totalSecs % 60);
+  var timeStr  = totalSecs > 0
+    ? (totalMin > 0 ? totalMin + ' min' + (totalSec > 0 ? ' ' + totalSec + ' sec' : '') : totalSec + ' sec')
+    : '';
+
+  var hasProfiles = loadProfiles().length > 0;
+
+  // Video list HTML
+  var videoListHtml = '';
+  videos.forEach(function(v, i) {
+    var vClips = (v.clips && v.clips.length) ? v.clips
+      : [{ start_seconds: v.start_seconds || 0, end_seconds: v.end_seconds || null }];
+    var clipLabel = vClips.length > 1 ? vClips.length + ' clips' : '1 clip';
+    videoListHtml +=
+      '<div class="sp-video-item">' +
+        '<span class="sp-video-num">' + (i + 1) + '</span>' +
+        '<span class="sp-video-title">' + esc(v.videoTitle || v.videoId) + '</span>' +
+        '<span class="sp-video-clips">' + clipLabel + '</span>' +
+      '</div>';
+  });
+
+  // Teacher notes (only shown when share_notes is true and notes exist)
+  var notesHtml = '';
+  if (lesson.share_notes && lesson.notes && lesson.notes.trim()) {
+    notesHtml =
+      '<div class="sp-notes-section">' +
+        '<div class="sp-notes-label">\uD83D\uDCDD Teacher Notes</div>' +
+        '<div class="sp-notes-text">' + esc(lesson.notes) + '</div>' +
+      '</div>';
+  }
+
+  // CTA block
+  var ctaHtml = hasProfiles
+    ? '<div class="sp-cta">' +
+        '<button type="button" class="sp-cta-btn returning" id="btn-sp-add">\u2795 Add to My Lessons</button>' +
+        '<div class="sp-cta-sub">Opens in your Focus Player</div>' +
+      '</div>'
+    : '<div class="sp-cta">' +
+        '<button type="button" class="sp-cta-btn new-user" id="btn-sp-get">Get Focus Player Free</button>' +
+        '<div class="sp-cta-sub">Create your free account to use this lesson</div>' +
+        '<div class="sp-cta-desc">Focus Player helps students stay engaged with curated video lessons \u2014 pause to capture thoughts, bookmark key moments, and track your progress.</div>' +
+      '</div>';
+
+  screen.innerHTML =
+    '<div class="sp-header">' +
+      '<div class="sp-logo"><span class="dot"></span> Focus Player <span class="dot"></span></div>' +
+      '<div class="sp-subtitle">&#x1F517; Shared Lesson</div>' +
+    '</div>' +
+    '<div class="sp-card">' +
+      '<div class="sp-card-header">' +
+        '<div class="sp-title">' + esc(lesson.title) + '</div>' +
+        '<div class="sp-curator">Shared by a Focus Player curator</div>' +
+      '</div>' +
+      '<div class="sp-body">' +
+        '<div class="sp-stats">' +
+          '<div class="sp-stat"><span class="sp-stat-val">' + videos.length + '</span><span class="sp-stat-label">Video' + (videos.length !== 1 ? 's' : '') + '</span></div>' +
+          '<div class="sp-stat"><span class="sp-stat-val">' + totalClips + '</span><span class="sp-stat-label">Clip' + (totalClips !== 1 ? 's' : '') + '</span></div>' +
+          (timeStr ? '<div class="sp-stat"><span class="sp-stat-val">' + timeStr + '</span><span class="sp-stat-label">View Time</span></div>' : '') +
+        '</div>' +
+        '<div class="sp-videos-label">Video Playlist</div>' +
+        '<div class="sp-video-list">' + videoListHtml + '</div>' +
+        notesHtml +
+      '</div>' +
+    '</div>' +
+    ctaHtml +
+    '<div class="sp-footer"><div class="sp-footer-text">Made with Focus Player \u2014 focusplayermvp.netlify.app &middot; Red Planet Labs</div></div>';
+
+  // Bind CTA
+  if (hasProfiles) {
+    document.getElementById('btn-sp-add').addEventListener('click', function() {
+      openAssignOverlay(lesson, videos);
+    });
+  } else {
+    document.getElementById('btn-sp-get').addEventListener('click', function() {
+      try { sessionStorage.setItem('pendingShareToken', token); } catch(e) {}
+      window.history.replaceState({}, '', window.location.pathname);
+      location.reload();
+    });
+  }
+}
+
+// ─── ASSIGN LEARNER OVERLAY ───────────────────────────────
+var pendingImportLesson = null;
+var pendingImportVideos = null;
+
+function openAssignOverlay(lesson, videos) {
+  pendingImportLesson = lesson;
+  pendingImportVideos = videos;
+  var sel = document.getElementById('assign-select');
+  sel.innerHTML = '';
+  var profiles = loadProfiles();
+  var learners = profiles.filter(function(p){ return p.role !== 'curator'; });
+  if (!learners.length) learners = profiles;
+  learners.forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  document.getElementById('assign-overlay').classList.add('open');
+}
+
+function closeAssignOverlay() {
+  document.getElementById('assign-overlay').classList.remove('open');
+  pendingImportLesson = null;
+  pendingImportVideos = null;
+}
+
+function importSharedLesson(lesson, videos, learnerId) {
+  var now = Date.now();
+  var newLesson = {
+    id:               'lesson_shared_' + now,
+    batchId:          'lesson_shared_' + now,
+    curatorId:        lesson.curator_id || 'shared',
+    learnerId:        learnerId,
+    status:           'new',
+    title:            lesson.title,
+    autoAdvance:      lesson.auto_advance || false,
+    pauseBetweenClips: lesson.pause_between_clips || false,
+    notes:            lesson.notes || '',
+    createdAt:        new Date().toISOString(),
+    videos:           videos
+  };
+  saveNewLesson(newLesson);
+  return newLesson;
+}
+
+// Check sessionStorage for a pending share import (called after new profile created)
+function checkPendingShareImport(newProfile) {
+  var token;
+  try { token = sessionStorage.getItem('pendingShareToken'); } catch(e) {}
+  if (!token) return;
+  try { sessionStorage.removeItem('pendingShareToken'); } catch(e) {}
+  // Only auto-import for learner profiles (curators build their own)
+  if (newProfile.role === 'curator') return;
+  if (!sb) return;
+  sb.from('lessons')
+    .select('id, curator_id, title, notes, share_notes, auto_advance, pause_between_clips')
+    .eq('share_token', token)
+    .eq('is_public', true)
+    .limit(1)
+    .then(function(r) {
+      if (r.error || !r.data || !r.data.length) return;
+      var lesson = r.data[0];
+      sb.from('lesson_videos')
+        .select('video_id, video_title, video_url, start_seconds, end_seconds, clips, notes, position')
+        .eq('lesson_id', lesson.id)
+        .order('position', { ascending: true })
+        .then(function(rv) {
+          var videos = [];
+          if (!rv.error && rv.data) {
+            videos = rv.data.map(function(v) {
+              return {
+                videoId:       v.video_id,
+                videoTitle:    v.video_title || v.video_id,
+                videoUrl:      v.video_url || '',
+                start_seconds: v.start_seconds || 0,
+                end_seconds:   v.end_seconds || null,
+                clips:         v.clips || [{ start_seconds: v.start_seconds || 0, end_seconds: v.end_seconds || null }],
+                notes:         v.notes || ''
+              };
+            });
+          }
+          importSharedLesson(lesson, videos, newProfile.id);
+        });
+    });
+}
+
+document.getElementById('assign-cancel').addEventListener('click', closeAssignOverlay);
+document.getElementById('assign-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeAssignOverlay();
+});
+document.getElementById('assign-confirm').addEventListener('click', function() {
+  if (!pendingImportLesson || !pendingImportVideos) return;
+  var learnerId = document.getElementById('assign-select').value;
+  if (!learnerId) return;
+  importSharedLesson(pendingImportLesson, pendingImportVideos, learnerId);
+  closeAssignOverlay();
+  // Navigate back to the main app without share param
+  window.history.replaceState({}, '', window.location.pathname);
+  location.reload();
+});
+
+// ═══════════════════════════════════════════════════════════
 // INIT — show profile screen or jump straight to player
 // ═══════════════════════════════════════════════════════════
 (function init(){
+  // ── Check for ?share= parameter first ──────────────────
+  var urlParams  = new URLSearchParams(window.location.search);
+  var shareToken = urlParams.get('share');
+  if (shareToken) {
+    showPreviewPage(shareToken);
+    return;
+  }
+
   var profiles=loadProfiles();
   var existing=getActiveProfile();
 
   if(profiles.length===0){
-    // First launch — show profile screen
     renderProfileScreen();
     document.getElementById('profile-screen').style.display='block';
   } else if(existing){
-    // Returning user with saved active profile — go straight to player
     setActiveProfile(existing);
     showPlayer();
   } else {
-    // Profiles exist but none active
     renderProfileScreen();
     document.getElementById('profile-screen').style.display='block';
   }
