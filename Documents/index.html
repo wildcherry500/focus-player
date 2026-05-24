@@ -4008,7 +4008,6 @@ document.getElementById('btn-generate-share').addEventListener('click', function
           if (lessonVideos.length) {
             var rows = lessonVideos.map(function(v, idx) {
               return {
-                id:            lid + '_v' + (idx + 1),
                 lesson_id:     lid,
                 video_id:      v.videoId,
                 video_title:   v.videoTitle,
@@ -4021,7 +4020,7 @@ document.getElementById('btn-generate-share').addEventListener('click', function
               };
             });
             console.log('[share] Upserting', rows.length, 'videos for lesson', lid);
-            sb.from('lesson_videos').upsert(rows, { onConflict: 'id' }).then(function(rv) {
+            sb.from('lesson_videos').upsert(rows, { onConflict: 'lesson_id,position' }).then(function(rv) {
               if (rv.error) console.error('[share] lesson_videos upsert error', rv.error);
               else console.log('[share] Videos upserted OK');
             });
