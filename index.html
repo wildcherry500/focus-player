@@ -4092,7 +4092,7 @@ function showPreviewPage(token) {
   // select() uses .eq() method — not URL params. Requires share_token, is_public,
   // share_notes columns to exist. A 400 response means one of these columns is missing.
   sb.from('lessons')
-    .select('id, batch_id, curator_id, learner_id, title, notes, share_notes, auto_advance, pause_between_clips, status, created_at')
+    .select('id, batch_id, curator_id, learner_id, title, share_notes, auto_advance, pause_between_clips, status, created_at')
     .eq('share_token', token)
     .eq('is_public', true)
     .limit(1)
@@ -4218,14 +4218,26 @@ function renderPreviewPage(screen, lesson, videos, token) {
       '</div>';
   });
 
-  // Teacher notes (only shown when share_notes is true and notes exist)
+  // Teacher notes (only shown when share_notes is true; notes live on lesson_videos)
   var notesHtml = '';
-  if (lesson.share_notes && lesson.notes && lesson.notes.trim()) {
-    notesHtml =
-      '<div class="sp-notes-section">' +
-        '<div class="sp-notes-label">\uD83D\uDCDD Teacher Notes</div>' +
-        '<div class="sp-notes-text">' + esc(lesson.notes) + '</div>' +
-      '</div>';
+  if (lesson.share_notes) {
+    var videoNotesItems = '';
+    videos.forEach(function(v, i) {
+      if (v.notes && v.notes.trim()) {
+        videoNotesItems +=
+          '<div style="margin-bottom:0.5rem">' +
+            '<strong style="font-size:0.8rem">' + esc(v.videoTitle || v.videoId) + '</strong>' +
+            '<div class="sp-notes-text">' + esc(v.notes) + '</div>' +
+          '</div>';
+      }
+    });
+    if (videoNotesItems) {
+      notesHtml =
+        '<div class="sp-notes-section">' +
+          '<div class="sp-notes-label">\uD83D\uDCDD Teacher Notes</div>' +
+          videoNotesItems +
+        '</div>';
+    }
   }
 
   // CTA block
@@ -4334,7 +4346,7 @@ function checkPendingShareImport(newProfile) {
   if (newProfile.role === 'curator') return;
   if (!sb) return;
   sb.from('lessons')
-    .select('id, curator_id, title, notes, share_notes, auto_advance, pause_between_clips')
+    .select('id, curator_id, title, share_notes, auto_advance, pause_between_clips')
     .eq('share_token', token)
     .eq('is_public', true)
     .limit(1)
