@@ -3949,19 +3949,36 @@ document.getElementById('btn-generate-share').addEventListener('click', function
   shareModalLesson.isPublic   = true;
   shareModalLesson.shareNotes = includeNotes;
 
-  // Persist to Supabase for all batch members
-  // NOTE: requires ALTER TABLE lessons ADD COLUMN share_token TEXT,
-  //       ADD COLUMN is_public BOOLEAN DEFAULT FALSE,
-  //       ADD COLUMN share_notes BOOLEAN DEFAULT FALSE
+  // Persist to Supabase — upsert so the lesson is created if it doesn't exist yet
   shareModalGroup.forEach(function(gl) {
+    // Look up the full lesson from the freshly-saved localStorage array
+    var fullLesson = null;
+    for (var j = 0; j < all.length; j++) {
+      if (all[j].id === gl.id) { fullLesson = all[j]; break; }
+    }
+    if (!fullLesson) return;
+    var lid = fullLesson.id;
+    var lessonVideos = fullLesson.videos || [];
     sbWrite(function(sb) {
-      var lid = gl.id;
-      var payload = { share_token: token, is_public: true, share_notes: includeNotes };
-      console.log('[share] Updating lesson', lid, 'payload:', JSON.stringify(payload));
-      sb.from('lessons').update(payload).eq('id', lid).then(function(r) {
+      var upsertPayload = {
+        id:                  lid,
+        curator_id:          fullLesson.curatorId || null,
+        learner_id:          fullLesson.learnerId || null,
+        title:               fullLesson.title,
+        status:              fullLesson.status || 'ready',
+        auto_advance:        fullLesson.autoAdvance || false,
+        pause_between_clips: fullLesson.pauseBetweenClips || false,
+        batch_id:            fullLesson.batchId || null,
+        notes:               fullLesson.notes || null,
+        share_token:         token,
+        is_public:           true,
+        share_notes:         includeNotes,
+        created_at:          fullLesson.createdAt || new Date().toISOString()
+      };
+      console.log('[share] Upserting lesson', lid, 'payload:', JSON.stringify(upsertPayload));
+      sb.from('lessons').upsert([upsertPayload], { onConflict: 'id' }).then(function(r) {
         if (r.error) {
-          console.error('[share] Supabase update FAILED for lesson', lid, r.error);
-          // Surface the error in the modal so it's not silent
+          console.error('[share] Supabase upsert FAILED for lesson', lid, r.error);
           var msg = document.getElementById('sm-copied-msg');
           if (msg) {
             msg.textContent = 'Save failed \u2014 check console';
@@ -3974,7 +3991,30 @@ document.getElementById('btn-generate-share').addEventListener('click', function
             }, 4000);
           }
         } else {
-          console.log('[share] Supabase update OK for lesson', lid);
+          console.log('[share] Supabase upsert OK for lesson', lid);
+          // Sync lesson_videos — delete existing rows then re-insert
+          if (lessonVideos.length) {
+            var rows = lessonVideos.map(function(v, idx) {
+              return {
+                lesson_id:     lid,
+                video_id:      v.videoId,
+                video_title:   v.videoTitle,
+                video_url:     v.videoUrl || '',
+                start_seconds: parseSecs(v.start_seconds || 0),
+                end_seconds:   parseSecs(v.end_seconds || 0) || null,
+                clips:         v.clips || null,
+                notes:         v.notes || null,
+                position:      idx + 1
+              };
+            });
+            sb.from('lesson_videos').delete().eq('lesson_id', lid).then(function(rd) {
+              if (rd.error) { console.error('[share] lesson_videos delete error', rd.error); return; }
+              sb.from('lesson_videos').insert(rows).then(function(ri) {
+                if (ri.error) console.error('[share] lesson_videos insert error', ri.error);
+                else console.log('[share] lesson_videos synced for lesson', lid);
+              });
+            });
+          }
         }
       });
     });
