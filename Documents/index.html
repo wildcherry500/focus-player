@@ -3949,8 +3949,10 @@ document.getElementById('btn-generate-share').addEventListener('click', function
   shareModalLesson.isPublic   = true;
   shareModalLesson.shareNotes = includeNotes;
 
-  // Persist to Supabase — upsert so the lesson is created if it doesn't exist yet
-  shareModalGroup.forEach(function(gl) {
+  // Persist to Supabase — upsert so the lesson is created if it doesn't exist yet.
+  // Only the first batch member gets a full upsert (avoids unique share_token conflicts
+  // for lessons 2+ that share the same token). Remaining members get a lightweight update.
+  shareModalGroup.forEach(function(gl, batchIdx) {
     // Look up the full lesson from the freshly-saved localStorage array
     var fullLesson = null;
     for (var j = 0; j < all.length; j++) {
@@ -3960,6 +3962,16 @@ document.getElementById('btn-generate-share').addEventListener('click', function
     var lid = fullLesson.id;
     var lessonVideos = fullLesson.videos || [];
     sbWrite(function(sb) {
+      if (batchIdx > 0) {
+        // Remaining batch members: just update share fields to avoid token uniqueness conflict
+        sb.from('lessons').update({ share_token: token, is_public: true, share_notes: includeNotes })
+          .eq('id', lid).then(function(r) {
+            if (r.error) console.error('[share] batch member update failed', lid, r.error);
+            else console.log('[share] batch member share fields updated OK', lid);
+          });
+        return;
+      }
+      // First lesson: full upsert to ensure it exists in Supabase with all fields
       var upsertPayload = {
         id:                  lid,
         curator_id:          fullLesson.curatorId || null,
@@ -4004,7 +4016,6 @@ document.getElementById('btn-generate-share').addEventListener('click', function
                 start_seconds: parseSecs(v.start_seconds || 0),
                 end_seconds:   parseSecs(v.end_seconds || 0) || null,
                 clips:         v.clips || null,
-                notes:         v.notes || null,
                 position:      idx + 1
               };
             });
