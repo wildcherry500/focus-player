@@ -1850,11 +1850,19 @@
 
 <script>
 // ─── SUPABASE CLIENT ──────────────────────────────────────
+// Uses the anon/publishable key — safe for unauthenticated preview page access.
+// RLS policies on the lessons table must allow SELECT where is_public = true.
+// Required columns (run in Supabase SQL Editor if not yet added):
+//   ALTER TABLE lessons ADD COLUMN IF NOT EXISTS share_token TEXT;
+//   ALTER TABLE lessons ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE;
+//   ALTER TABLE lessons ADD COLUMN IF NOT EXISTS share_notes BOOLEAN DEFAULT FALSE;
+//   CREATE INDEX IF NOT EXISTS idx_lessons_share_token ON lessons(share_token) WHERE is_public = TRUE;
 var sb = null;
 try {
   sb = window.supabase.createClient('https://ouichnebmtqujuiroxcb.supabase.co', 'sb_publishable_kgpo8bpPbAgxEd-7_44D8w_Omp1zWcH');
+  console.log('[supabase] Client initialised — anon/publishable key, project: ouichnebmtqujuiroxcb');
 } catch(e) {
-  console.warn('Supabase failed:', e);
+  console.warn('[supabase] Client init failed:', e);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4080,6 +4088,9 @@ function showPreviewPage(token) {
   }, 12000);
 
   console.log('[preview] Fetching lesson for share_token:', token);
+  console.log('[preview] Query: lessons WHERE share_token =', token, 'AND is_public = true');
+  // select() uses .eq() method — not URL params. Requires share_token, is_public,
+  // share_notes columns to exist. A 400 response means one of these columns is missing.
   sb.from('lessons')
     .select('id, batch_id, curator_id, learner_id, title, notes, share_notes, auto_advance, pause_between_clips, status, created_at')
     .eq('share_token', token)
@@ -4087,14 +4098,19 @@ function showPreviewPage(token) {
     .limit(1)
     .then(function(r) {
       clearTimeout(fetchTimeout);
-      console.log('[preview] Supabase result — error:', r.error, '| rows:', r.data ? r.data.length : 'null');
-      if (r.error || !r.data || !r.data.length) {
-        if (r.error) {
-          console.error('[preview] Query error details:', r.error);
-          renderPreviewConnError(screen);
-        } else {
-          renderPreviewError(screen);
-        }
+      console.log('[preview] Supabase response — error:', r.error, '| rows:', r.data ? r.data.length : 'null');
+      if (r.error) {
+        console.error('[preview] error message:', r.error.message,
+          '| code:', r.error.code,
+          '| details:', r.error.details,
+          '| hint:', r.error.hint);
+        console.error('[preview] Full error object:', JSON.stringify(r.error));
+        renderPreviewConnError(screen);
+        return;
+      }
+      if (!r.data || !r.data.length) {
+        console.log('[preview] No matching lesson found for token:', token);
+        renderPreviewError(screen);
         return;
       }
       var lesson = r.data[0];
