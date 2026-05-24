@@ -4392,11 +4392,12 @@ function closeAssignOverlay() {
   pendingImportVideos = null;
 }
 
-function importSharedLesson(lesson, videos, learnerId) {
+function importSharedLesson(lesson, videos, learnerId, onComplete) {
   var now = Date.now();
+  var newId = 'lesson_shared_' + now;
   var newLesson = {
-    id:               'lesson_shared_' + now,
-    batchId:          'lesson_shared_' + now,
+    id:               newId,
+    batchId:          newId,
     curatorId:        lesson.curator_id || 'shared',
     learnerId:        learnerId,
     status:           'new',
@@ -4408,6 +4409,57 @@ function importSharedLesson(lesson, videos, learnerId) {
     videos:           videos
   };
   saveNewLesson(newLesson);
+
+  if (!sb) { if (onComplete) onComplete(); return newLesson; }
+
+  // Fetch videos from Supabase using batch_id so we find them regardless of
+  // which batch member they were saved under
+  function mapVideos(rows) {
+    return rows.map(function(v) {
+      return {
+        videoId:       v.video_id,
+        videoTitle:    v.video_title || v.video_id,
+        videoUrl:      v.video_url || '',
+        start_seconds: v.start_seconds || 0,
+        end_seconds:   v.end_seconds || null,
+        clips:         v.clips || [{ start_seconds: v.start_seconds || 0, end_seconds: v.end_seconds || null }],
+        notes:         v.notes || ''
+      };
+    });
+  }
+
+  function saveVideosAndComplete(fetchedVideos) {
+    if (fetchedVideos.length) {
+      var all = loadAllLessons();
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].id === newId) { all[i].videos = fetchedVideos; break; }
+      }
+      saveAllLessons(all);
+    }
+    if (onComplete) onComplete();
+  }
+
+  function fetchByIds(ids) {
+    var q = sb.from('lesson_videos')
+      .select('video_id, video_title, video_url, start_seconds, end_seconds, clips, notes, position')
+      .order('position', { ascending: true });
+    q = (ids.length === 1) ? q.eq('lesson_id', ids[0]) : q.in('lesson_id', ids);
+    q.then(function(rv) {
+      saveVideosAndComplete((!rv.error && rv.data) ? mapVideos(rv.data) : []);
+    });
+  }
+
+  if (lesson.batch_id) {
+    sb.from('lessons').select('id').eq('batch_id', lesson.batch_id).then(function(rb) {
+      var ids = (!rb.error && rb.data && rb.data.length)
+        ? rb.data.map(function(l) { return l.id; })
+        : [lesson.id];
+      fetchByIds(ids);
+    });
+  } else {
+    fetchByIds([lesson.id]);
+  }
+
   return newLesson;
 }
 
@@ -4421,34 +4473,14 @@ function checkPendingShareImport(newProfile) {
   if (newProfile.role === 'curator') return;
   if (!sb) return;
   sb.from('lessons')
-    .select('id, curator_id, title, share_notes, auto_advance, pause_between_clips')
+    .select('id, batch_id, curator_id, title, share_notes, auto_advance, pause_between_clips')
     .eq('share_token', token)
     .eq('is_public', true)
     .limit(1)
     .then(function(r) {
       if (r.error || !r.data || !r.data.length) return;
-      var lesson = r.data[0];
-      sb.from('lesson_videos')
-        .select('video_id, video_title, video_url, start_seconds, end_seconds, clips, notes, position')
-        .eq('lesson_id', lesson.id)
-        .order('position', { ascending: true })
-        .then(function(rv) {
-          var videos = [];
-          if (!rv.error && rv.data) {
-            videos = rv.data.map(function(v) {
-              return {
-                videoId:       v.video_id,
-                videoTitle:    v.video_title || v.video_id,
-                videoUrl:      v.video_url || '',
-                start_seconds: v.start_seconds || 0,
-                end_seconds:   v.end_seconds || null,
-                clips:         v.clips || [{ start_seconds: v.start_seconds || 0, end_seconds: v.end_seconds || null }],
-                notes:         v.notes || ''
-              };
-            });
-          }
-          importSharedLesson(lesson, videos, newProfile.id);
-        });
+      // importSharedLesson fetches videos from Supabase itself using batch_id
+      importSharedLesson(r.data[0], [], newProfile.id);
     });
 }
 
@@ -4460,11 +4492,12 @@ document.getElementById('assign-confirm').addEventListener('click', function() {
   if (!pendingImportLesson || !pendingImportVideos) return;
   var learnerId = document.getElementById('assign-select').value;
   if (!learnerId) return;
-  importSharedLesson(pendingImportLesson, pendingImportVideos, learnerId);
-  closeAssignOverlay();
-  // Navigate back to the main app without share param
-  window.history.replaceState({}, '', window.location.pathname);
-  location.reload();
+  importSharedLesson(pendingImportLesson, pendingImportVideos, learnerId, function() {
+    closeAssignOverlay();
+    // Navigate back to the main app without share param
+    window.history.replaceState({}, '', window.location.pathname);
+    location.reload();
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
