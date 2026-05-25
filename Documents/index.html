@@ -4395,31 +4395,43 @@ function closeAssignOverlay() {
 function importSharedLesson(lesson, videos, learnerId, onComplete) {
   var now = Date.now();
   var newId = 'lesson_shared_' + now;
-  var newLesson = {
-    id:               newId,
-    batchId:          newId,
-    curatorId:        lesson.curator_id || 'shared',
-    learnerId:        learnerId,
-    status:           'new',
-    title:            lesson.title,
-    autoAdvance:      lesson.auto_advance || false,
-    pauseBetweenClips: lesson.pause_between_clips || false,
-    notes:            lesson.notes || '',
-    createdAt:        new Date().toISOString(),
-    videos:           videos
-  };
-  saveNewLesson(newLesson);
 
-  if (!sb) { if (onComplete) onComplete(); return newLesson; }
+  // Build and persist the new lesson with the given video array, then call onComplete
+  function buildAndSave(videoArr) {
+    var newLesson = {
+      id:               newId,
+      batchId:          newId,
+      curatorId:        lesson.curator_id || 'shared',
+      learnerId:        learnerId,
+      status:           'new',
+      title:            lesson.title,
+      autoAdvance:      lesson.auto_advance || false,
+      pauseBetweenClips: lesson.pause_between_clips || false,
+      notes:            lesson.notes || '',
+      createdAt:        new Date().toISOString(),
+      videos:           videoArr
+    };
+    saveNewLesson(newLesson);
+    if (onComplete) onComplete();
+    return newLesson;
+  }
 
-  // Fetch videos from Supabase using batch_id so we find them regardless of
-  // which batch member they were saved under
-  function mapVideos(rows) {
+  // If videos were already fetched by the preview page, use them directly —
+  // no second Supabase round-trip needed, no race condition possible
+  if (videos && videos.length) {
+    return buildAndSave(videos);
+  }
+
+  // Videos not provided (e.g. checkPendingShareImport path): fetch from Supabase
+  // using batch_id so we find them regardless of which batch member stored them
+  if (!sb) { return buildAndSave([]); }
+
+  function mapRows(rows) {
     return rows.map(function(v) {
       return {
-        videoId:       v.video_id   || v.videoId,
-        videoTitle:    v.video_title || v.videoTitle || v.video_id || v.videoId,
-        videoUrl:      v.video_url  || v.videoUrl  || '',
+        videoId:       v.video_id    || v.videoId    || '',
+        videoTitle:    v.video_title || v.videoTitle || v.video_id || '',
+        videoUrl:      v.video_url   || v.videoUrl   || '',
         start_seconds: v.start_seconds || 0,
         end_seconds:   v.end_seconds   || null,
         clips:         v.clips || [{ start_seconds: v.start_seconds || 0, end_seconds: v.end_seconds || null }],
@@ -4428,24 +4440,13 @@ function importSharedLesson(lesson, videos, learnerId, onComplete) {
     });
   }
 
-  function saveVideosAndComplete(fetchedVideos) {
-    if (fetchedVideos.length) {
-      var all = loadAllLessons();
-      for (var i = 0; i < all.length; i++) {
-        if (all[i].id === newId) { all[i].videos = fetchedVideos; break; }
-      }
-      saveAllLessons(all);
-    }
-    if (onComplete) onComplete();
-  }
-
   function fetchByIds(ids) {
     var q = sb.from('lesson_videos')
       .select('id, lesson_id, video_id, video_title, video_url, position, clips, start_seconds, end_seconds, notes')
       .order('position', { ascending: true });
     q = (ids.length === 1) ? q.eq('lesson_id', ids[0]) : q.in('lesson_id', ids);
     q.then(function(rv) {
-      saveVideosAndComplete((!rv.error && rv.data) ? mapVideos(rv.data) : []);
+      buildAndSave((!rv.error && rv.data && rv.data.length) ? mapRows(rv.data) : []);
     });
   }
 
@@ -4459,8 +4460,6 @@ function importSharedLesson(lesson, videos, learnerId, onComplete) {
   } else {
     fetchByIds([lesson.id]);
   }
-
-  return newLesson;
 }
 
 // Check sessionStorage for a pending share import (called after new profile created)
