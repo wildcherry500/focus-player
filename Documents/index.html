@@ -4412,7 +4412,7 @@ function importSharedLesson(lesson, videos, learnerId, onComplete) {
       videos:           videoArr
     };
     saveNewLesson(newLesson);
-    if (onComplete) onComplete();
+    if (onComplete) onComplete(newLesson);
     return newLesson;
   }
 
@@ -4491,11 +4491,27 @@ document.getElementById('assign-confirm').addEventListener('click', function() {
   if (!pendingImportLesson || !pendingImportVideos) return;
   var learnerId = document.getElementById('assign-select').value;
   if (!learnerId) return;
-  importSharedLesson(pendingImportLesson, pendingImportVideos, learnerId, function() {
+  importSharedLesson(pendingImportLesson, pendingImportVideos, learnerId, function(newLesson) {
     closeAssignOverlay();
-    // Navigate back to the main app without share param
     window.history.replaceState({}, '', window.location.pathname);
-    location.reload();
+
+    // Find the learner profile so we can set it active
+    var profiles = loadProfiles();
+    var learnerProfile = null;
+    for (var i = 0; i < profiles.length; i++) {
+      if (profiles[i].id === learnerId) { learnerProfile = profiles[i]; break; }
+    }
+
+    if (learnerProfile && newLesson && newLesson.videos && newLesson.videos.length) {
+      // Switch to the learner and launch the lesson immediately
+      document.getElementById('share-preview-screen').style.display = 'none';
+      setActiveProfile(learnerProfile);
+      showPlayer();
+      launchLessonFresh(newLesson);
+    } else {
+      // Fallback: reload so the app re-initialises normally
+      location.reload();
+    }
   });
 });
 
