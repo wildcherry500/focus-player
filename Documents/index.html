@@ -3052,8 +3052,8 @@ function loadAllNotes() {
   catch(e) { return []; }
 }
 function saveAllNotes(notes) {
-  try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); flashSaved(); }
-  catch(e) { setStatus('Storage error', true); }
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); flashSaved(); dbg('saveAllNotes() OK — wrote '+notes.length+' notes','#0f0'); }
+  catch(e) { dbg('saveAllNotes() FAILED: '+e,'#f55'); setStatus('Storage error', true); }
 }
 
 // Notes for the CURRENT user + CURRENT video
@@ -3065,10 +3065,12 @@ function loadCurrentNotes() {
 }
 
 function appendNote(note) {
+  dbg('appendNote() type='+note.type+' videoId='+note.videoId+' time='+note.time,'#0ff');
   note.userId    = activeProfile.id;
   note.userName  = activeProfile.name;
   var all = loadAllNotes();
   all.push(note);
+  dbg('appendNote() saving — total notes in array: '+all.length);
   saveAllNotes(all);
   var payload = {
     type:         note.type,
@@ -3440,7 +3442,11 @@ function closeThoughtModal(){
 }
 function saveThought(){
   var text=document.getElementById('thought-text').value.trim();
-  if(!text||!currentVideoId){closeThoughtModal();return;}
+  dbg('saveThought() text="'+text.slice(0,50)+'" len='+text.length+' videoId='+currentVideoId+' profile='+(activeProfile?activeProfile.id:'NULL'),'#ff0');
+  if(!text||!currentVideoId){
+    dbg('saveThought() BAILED — '+((!text)?'text empty':'no videoId'),'#f55');
+    closeThoughtModal();return;
+  }
   appendNote({type:'thought',videoId:currentVideoId,videoTitle:currentVideoTitle,time:captureTimestamp,note:text,savedAt:Date.now(),savedAtStr:tsNow()});
   renderNotes();
   setStatus('Thought saved at '+fmt(captureTimestamp));
@@ -3456,45 +3462,80 @@ document.getElementById('thought-overlay').addEventListener('click',function(e){
 });
 
 // ─── SPEECH ──────────────────────────────────────────────
+// ── DEBUG HELPER (temporary) ─────────────────────────────
+var _dbgT0=Date.now();
+function dbg(msg,color){
+  var el=document.getElementById('dbg-log');
+  if(!el) return;
+  var ms=Date.now()-_dbgT0;
+  var row=document.createElement('div');
+  row.style.borderBottom='1px solid #1a1a1a';
+  row.style.padding='1px 0';
+  if(color) row.style.color=color;
+  row.textContent='[+'+(ms/1000).toFixed(2)+'s] '+msg;
+  if(el.firstChild && el.firstChild.tagName==='I') el.innerHTML='';
+  el.insertBefore(row, el.firstChild);
+  // cap at 60 entries
+  while(el.children.length>60) el.removeChild(el.lastChild);
+}
+// ─────────────────────────────────────────────────────────
 var recognition=null, isRecording=false;
 
 function stopSpeech(){
+  dbg('stopSpeech() called — isRecording was: '+isRecording,'#fa0');
   isRecording=false;
-  try{ if(recognition) recognition.stop(); }catch(e){}
+  try{ if(recognition) recognition.stop(); }catch(e){ dbg('stopSpeech recognition.stop() threw: '+e,'#f55'); }
   var btn=document.getElementById('btn-mic');
   btn.textContent='🎤 Speak'; btn.classList.remove('recording');
   document.getElementById('mic-hint').textContent='Tap to dictate — text appears above';
 }
 
 document.getElementById('btn-mic').addEventListener('click',function(){
+  dbg('MIC BTN clicked — isRecording='+isRecording);
   if(isRecording){ stopSpeech(); return; }
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){
+    dbg('SpeechRecognition NOT available','#f55');
     document.getElementById('mic-hint').textContent='Tap the mic key on your keyboard to dictate';
     document.getElementById('thought-text').focus();
     return;
   }
+  dbg('SR available: '+(window.SpeechRecognition?'SpeechRecognition':'webkitSpeechRecognition'));
   try{ if(recognition) recognition.stop(); }catch(e){}
   recognition=new SR();
   recognition.continuous=true; recognition.interimResults=true; recognition.lang='en-US';
   recognition.onresult=function(e){
     var interim='',fin='';
     for(var i=e.resultIndex;i<e.results.length;i++){
-      if(e.results[i].isFinal) fin+=e.results[i][0].transcript;
-      else interim+=e.results[i][0].transcript;
+      var isFinal=e.results[i].isFinal;
+      var transcript=e.results[i][0].transcript;
+      dbg('onresult['+i+'] isFinal='+isFinal+' conf='+e.results[i][0].confidence.toFixed(2)+' "'+transcript.slice(0,40)+'"',(isFinal?'#0ff':'#888'));
+      if(isFinal) fin+=transcript;
+      else interim+=transcript;
     }
     var ta=document.getElementById('thought-text');
+    var before=ta.value;
     if(fin) ta.value=(ta.value+' '+fin).trim();
+    dbg('onresult → ta.value before="'+before.slice(0,30)+'" after="'+ta.value.slice(0,30)+'" fin="'+fin.slice(0,30)+'"',(fin?'#0f0':'#666'));
     document.getElementById('mic-hint').textContent=interim?'… '+interim:'Listening…';
   };
-  recognition.onerror=function(e){ setStatus('Mic error: '+e.error,true); stopSpeech(); };
-  recognition.onend=function(){ if(isRecording) stopSpeech(); };
+  recognition.onerror=function(e){
+    dbg('recognition.onerror: '+e.error,'#f55');
+    setStatus('Mic error: '+e.error,true); stopSpeech();
+  };
+  recognition.onend=function(){
+    var ta=document.getElementById('thought-text');
+    dbg('recognition.onend — isRecording='+isRecording+' ta.value="'+ta.value.slice(0,40)+'"','#fa0');
+    if(isRecording) stopSpeech();
+  };
   try{
     isRecording=true; recognition.start();
+    dbg('recognition.start() succeeded','#0f0');
     var btn=document.getElementById('btn-mic');
     btn.textContent='⏹ Stop'; btn.classList.add('recording');
     document.getElementById('mic-hint').textContent='Listening…';
   }catch(err){
+    dbg('recognition.start() THREW: '+err,'#f55');
     isRecording=false;
     document.getElementById('mic-hint').textContent='Tap the mic key on your keyboard to dictate';
     document.getElementById('thought-text').focus();
@@ -4542,5 +4583,17 @@ document.getElementById('assign-confirm').addEventListener('click', function() {
   }
 })();
 </script>
+<!-- ═══ VOICE NOTE DEBUG PANEL — remove once diagnosis is complete ═══ -->
+<div id="dbg-panel" style="position:fixed;bottom:0;left:0;right:0;max-height:42vh;overflow-y:auto;background:rgba(0,0,0,0.9);color:#0f0;font:11px/1.5 monospace;z-index:99999;padding:4px 6px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(0,0,0,0.92);padding:3px 0;border-bottom:1px solid #444">
+    <b style="color:#ff0">Voice Debug</b>
+    <span>
+      <button onclick="document.getElementById('dbg-log').innerHTML=''" style="padding:2px 6px;margin-right:4px;font-size:10px">Clear</button>
+      <button onclick="document.getElementById('dbg-panel').style.display='none';document.getElementById('dbg-show-btn').style.display='block'" style="padding:2px 6px;font-size:10px">Hide</button>
+    </span>
+  </div>
+  <div id="dbg-log" style="padding-top:3px"><i style="color:#888">Waiting…</i></div>
+</div>
+<button id="dbg-show-btn" onclick="document.getElementById('dbg-panel').style.display='block';this.style.display='none'" style="display:none;position:fixed;bottom:6px;right:6px;z-index:99999;padding:4px 8px;font-size:10px;opacity:0.75">Debug</button>
 </body>
 </html>
