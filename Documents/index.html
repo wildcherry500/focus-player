@@ -3437,16 +3437,24 @@ function openThoughtModal(timestamp){
   setTimeout(function(){document.getElementById('thought-text').focus();},200);
 }
 function closeThoughtModal(){
+  pendingSave=false;
   document.getElementById('thought-overlay').classList.remove('open');
   stopSpeech();
 }
 function saveThought(){
   var text=document.getElementById('thought-text').value.trim();
-  dbg('saveThought() text="'+text.slice(0,50)+'" len='+text.length+' videoId='+currentVideoId+' profile='+(activeProfile?activeProfile.id:'NULL'),'#ff0');
-  if(!text||!currentVideoId){
-    dbg('saveThought() BAILED — '+((!text)?'text empty':'no videoId'),'#f55');
-    closeThoughtModal();return;
+  dbg('saveThought() text="'+text.slice(0,50)+'" len='+text.length+' isRecording='+isRecording+' videoId='+currentVideoId,'#ff0');
+  if(!currentVideoId){ closeThoughtModal(); return; }
+  if(!text && isRecording){
+    // iOS hasn't delivered isFinal=true yet — stop SR to flush the final result;
+    // recognition.onend will complete the save once iOS delivers it.
+    dbg('saveThought() deferring — stopping SR to flush final result','#fa0');
+    pendingSave=true;
+    try{ recognition.stop(); }catch(e){ dbg('recognition.stop() threw: '+e,'#f55'); }
+    return;
   }
+  if(!text){ dbg('saveThought() BAILED — text empty','#f55'); closeThoughtModal(); return; }
+  dbg('saveThought() saving','#0f0');
   appendNote({type:'thought',videoId:currentVideoId,videoTitle:currentVideoTitle,time:captureTimestamp,note:text,savedAt:Date.now(),savedAtStr:tsNow()});
   renderNotes();
   setStatus('Thought saved at '+fmt(captureTimestamp));
@@ -3479,7 +3487,7 @@ function dbg(msg,color){
   while(el.children.length>60) el.removeChild(el.lastChild);
 }
 // ─────────────────────────────────────────────────────────
-var recognition=null, isRecording=false;
+var recognition=null, isRecording=false, pendingSave=false, lastInterim='';
 
 function stopSpeech(){
   dbg('stopSpeech() called — isRecording was: '+isRecording,'#fa0');
@@ -3502,6 +3510,7 @@ document.getElementById('btn-mic').addEventListener('click',function(){
   }
   dbg('SR available: '+(window.SpeechRecognition?'SpeechRecognition':'webkitSpeechRecognition'));
   try{ if(recognition) recognition.stop(); }catch(e){}
+  lastInterim='';
   recognition=new SR();
   recognition.continuous=true; recognition.interimResults=true; recognition.lang='en-US';
   recognition.onresult=function(e){
@@ -3517,6 +3526,7 @@ document.getElementById('btn-mic').addEventListener('click',function(){
     var before=ta.value;
     if(fin) ta.value=(ta.value+' '+fin).trim();
     dbg('onresult → ta.value before="'+before.slice(0,30)+'" after="'+ta.value.slice(0,30)+'" fin="'+fin.slice(0,30)+'"',(fin?'#0f0':'#666'));
+    if(interim) lastInterim=interim;
     document.getElementById('mic-hint').textContent=interim?'… '+interim:'Listening…';
   };
   recognition.onerror=function(e){
@@ -3525,8 +3535,19 @@ document.getElementById('btn-mic').addEventListener('click',function(){
   };
   recognition.onend=function(){
     var ta=document.getElementById('thought-text');
-    dbg('recognition.onend — isRecording='+isRecording+' ta.value="'+ta.value.slice(0,40)+'"','#fa0');
+    dbg('recognition.onend — isRecording='+isRecording+' pendingSave='+pendingSave+' ta.value="'+ta.value.slice(0,40)+'"','#fa0');
     if(isRecording) stopSpeech();
+    if(pendingSave){
+      pendingSave=false;
+      var text=(ta.value||lastInterim).trim();
+      dbg('onend flush — text="'+text.slice(0,50)+'"','#0ff');
+      if(text&&currentVideoId){
+        appendNote({type:'thought',videoId:currentVideoId,videoTitle:currentVideoTitle,time:captureTimestamp,note:text,savedAt:Date.now(),savedAtStr:tsNow()});
+        renderNotes();
+        setStatus('Thought saved at '+fmt(captureTimestamp));
+      }
+      closeThoughtModal();
+    }
   };
   try{
     isRecording=true; recognition.start();
