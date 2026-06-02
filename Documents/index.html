@@ -1092,6 +1092,143 @@
   .sp-error-msg { font-family: 'Space Mono', monospace; font-size: 0.72rem; letter-spacing: 0.05em; color: var(--muted); }
   .sp-loading { text-align: center; padding: 3rem 1rem; font-family: 'Space Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em; color: var(--muted); }
 
+  /* ═══════════════════════════════════════
+     ONBOARDING SCREENS (share link, new user)
+  ═══════════════════════════════════════ */
+  #onboarding-role-screen,
+  #onboarding-name-screen,
+  #onboarding-maker-screen {
+    display: none;
+    width: 100%; max-width: 600px;
+    flex-direction: column;
+  }
+  .ob-header {
+    background: var(--fg); color: #fff;
+    padding: 1.2rem 1.5rem; text-align: center;
+  }
+  .ob-logo {
+    font-family: 'Space Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 0.5rem; justify-content: center;
+    margin-bottom: 0.4rem;
+  }
+  .ob-setup-label {
+    font-family: 'Space Mono', monospace; font-size: 0.6rem;
+    letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.5;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ob-body {
+    background: var(--bg); padding: 2rem 1.5rem;
+    display: flex; flex-direction: column; gap: 1.25rem;
+  }
+  .ob-heading {
+    font-family: 'DM Sans', sans-serif; font-size: 1.2rem;
+    font-weight: 600; color: var(--fg); line-height: 1.3;
+  }
+  .ob-cards { display: flex; flex-direction: column; gap: 0.75rem; }
+  .ob-card {
+    background: var(--card); border: 2px solid var(--border);
+    padding: 1.1rem 1.25rem; cursor: pointer;
+    display: flex; align-items: center; gap: 1rem;
+    transition: border-color 0.12s, background 0.12s;
+    text-align: left; width: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ob-card:hover  { border-color: var(--accent); background: #fffaf5; }
+  .ob-card:active { background: #fff3e0; }
+  .ob-card-icon  { font-size: 1.75rem; line-height: 1; flex-shrink: 0; }
+  .ob-card-text  { display: flex; flex-direction: column; gap: 0.18rem; }
+  .ob-card-title {
+    font-family: 'DM Sans', sans-serif; font-size: 1rem;
+    font-weight: 600; color: var(--fg);
+  }
+  .ob-card-sub { font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
+  .ob-name-input {
+    width: 100%; font-family: 'DM Sans', sans-serif; font-size: 1.05rem;
+    border: 2px solid var(--border); padding: 0.65rem 0.85rem;
+    outline: none; background: #fff; color: var(--fg);
+    -webkit-appearance: none; border-radius: 0;
+  }
+  .ob-name-input:focus { border-color: var(--accent); }
+  .ob-start-btn {
+    font-family: 'Space Mono', monospace; font-size: 0.8rem;
+    font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 0.9rem 1.5rem; background: var(--accent); color: #fff;
+    border: none; cursor: pointer; width: 100%; min-height: 52px;
+    transition: background 0.12s; -webkit-appearance: none; border-radius: 0;
+  }
+  .ob-start-btn:hover:not(:disabled) { background: #e07b3a; }
+  .ob-start-btn:disabled { opacity: 0.38; cursor: default; }
+  .ob-back-link {
+    font-family: 'Space Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); background: none; border: none; cursor: pointer;
+    padding: 0.25rem 0; text-decoration: underline; text-align: left;
+  }
+  .ob-back-link:hover { color: var(--fg); }
+  .ob-placeholder {
+    text-align: center; padding: 3rem 1.5rem;
+    display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+  }
+  .ob-placeholder-icon { font-size: 2.2rem; line-height: 1; }
+  .ob-placeholder-msg {
+    font-family: 'Space Mono', monospace; font-size: 0.72rem;
+    letter-spacing: 0.05em; color: var(--muted); line-height: 1.6;
+  }
+  .ob-subheading {
+    font-size: 0.9rem; color: var(--muted); margin-top: 0.15rem; line-height: 1.4;
+  }
+  .ob-section-label {
+    font-family: 'Space Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .ob-add-row {
+    display: flex; gap: 0.5rem; align-items: stretch;
+  }
+  .ob-add-row .ob-name-input {
+    flex: 1;
+  }
+  .ob-add-btn {
+    font-family: 'Space Mono', monospace; font-size: 1.2rem; font-weight: 700;
+    padding: 0 1rem; background: var(--fg); color: #fff;
+    border: 2px solid var(--border); cursor: pointer;
+    flex-shrink: 0; min-width: 48px; min-height: 48px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.12s;
+    -webkit-appearance: none; border-radius: 0;
+  }
+  .ob-add-btn:hover { background: var(--accent); border-color: var(--accent); }
+  .ob-chips {
+    display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 0;
+    margin-top: 0.5rem;
+  }
+  .ob-chip {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--accent); color: #fff;
+    padding: 0.3rem 0.5rem 0.3rem 0.7rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500;
+    border-radius: 2px;
+  }
+  .ob-chip-name { line-height: 1.2; }
+  .ob-chip-remove {
+    background: none; border: none; cursor: pointer;
+    color: rgba(255,255,255,0.8); font-size: 1rem; line-height: 1;
+    padding: 0 0.1rem; display: flex; align-items: center;
+    transition: color 0.1s;
+  }
+  .ob-chip-remove:hover { color: #fff; }
+  .ob-maker-name-section { display: flex; flex-direction: column; gap: 0.35rem; }
+  .ob-maker-name-label {
+    font-size: 0.8rem; color: var(--muted);
+  }
+  .ob-name-input--secondary {
+    font-size: 0.95rem;
+    border-color: #ccc;
+    background: #faf8f4;
+  }
+  .ob-name-input--secondary:focus { border-color: var(--accent); background: #fff; }
+
   /* ASSIGN LEARNER OVERLAY */
   #assign-overlay {
     display: none; position: fixed; inset: 0;
@@ -1566,6 +1703,83 @@
      SHARE PREVIEW SCREEN
 ═══════════════════════════════════════ -->
 <div id="share-preview-screen"></div>
+
+<!-- ═══════════════════════════════════════
+     ONBOARDING SCREEN 2 — ROLE FORK
+═══════════════════════════════════════ -->
+<div id="onboarding-role-screen">
+  <div class="ob-header">
+    <div class="ob-logo"><span class="dot"></span> Focus Player <span class="dot"></span></div>
+    <div class="ob-setup-label" id="ob-setup-label"></div>
+  </div>
+  <div class="ob-body">
+    <div class="ob-heading">How are you using this lesson?</div>
+    <div class="ob-cards">
+      <button class="ob-card" id="ob-card-learner">
+        <span class="ob-card-icon">&#128100;</span>
+        <div class="ob-card-text">
+          <div class="ob-card-title">I'm the Learner</div>
+          <div class="ob-card-sub">I'll watch this myself</div>
+        </div>
+      </button>
+      <button class="ob-card" id="ob-card-maker">
+        <span class="ob-card-icon">&#128218;</span>
+        <div class="ob-card-text">
+          <div class="ob-card-title">I'm a Lesson Maker</div>
+          <div class="ob-card-sub">I'm setting this up for my student</div>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     ONBOARDING SCREEN 3A — LEARNER NAME
+═══════════════════════════════════════ -->
+<div id="onboarding-name-screen">
+  <div class="ob-header">
+    <div class="ob-logo"><span class="dot"></span> Focus Player <span class="dot"></span></div>
+    <div class="ob-setup-label" id="ob-name-setup-label"></div>
+  </div>
+  <div class="ob-body">
+    <div class="ob-heading">What's your name?</div>
+    <input class="ob-name-input" id="ob-name-input" type="text" placeholder="Your name" autocomplete="given-name" />
+    <button class="ob-start-btn" id="ob-start-btn" disabled>START LESSON &#8594;</button>
+    <button class="ob-back-link" id="ob-back-to-role">&#8592; Back</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     ONBOARDING SCREEN 3B — LESSON MAKER
+═══════════════════════════════════════ -->
+<div id="onboarding-maker-screen">
+  <div class="ob-header">
+    <div class="ob-logo"><span class="dot"></span> Focus Player <span class="dot"></span></div>
+    <div class="ob-setup-label" id="ob-maker-setup-label"></div>
+  </div>
+  <div class="ob-body">
+    <div>
+      <div class="ob-heading">Let's get set up</div>
+      <div class="ob-subheading">Who will be watching?</div>
+    </div>
+    <div>
+      <div class="ob-section-label">Learner name(s)</div>
+      <div class="ob-add-row">
+        <input class="ob-name-input" id="ob-learner-input" type="text"
+               placeholder="Learner's name" autocomplete="given-name" />
+        <button class="ob-add-btn" id="ob-learner-add" aria-label="Add learner">+</button>
+      </div>
+      <div class="ob-chips" id="ob-learner-chips"></div>
+    </div>
+    <div class="ob-maker-name-section">
+      <div class="ob-maker-name-label">Your name (optional)</div>
+      <input class="ob-name-input ob-name-input--secondary" id="ob-maker-name-input"
+             type="text" placeholder="Your name" autocomplete="name" />
+    </div>
+    <button class="ob-start-btn" id="ob-maker-start-btn" disabled>START LESSON &#8594;</button>
+    <button class="ob-back-link" id="ob-back-to-role-from-maker">&#8592; Back</button>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════
      PROFILE SELECT SCREEN
@@ -2653,6 +2867,7 @@ function advanceToNextLessonVideo() {
     if (activeLessonData.autoAdvance) {
       setTimeout(function(){ loadVideo(nextVid.videoId, nextClips[0].start_seconds); }, 1200);
     } else {
+      if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') { pauseWasUser = false; ytPlayer.pauseVideo(); }
       openBetweenVideoOverlay(nextIdx, nextVid, false);
     }
   } else {
@@ -2663,6 +2878,7 @@ function advanceToNextLessonVideo() {
       activeLessonData = null; activeLessonVideoIdx = 0;
       hideLessonBanner(); setStatus('Lesson complete \u2014 great work!');
     } else {
+      if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') { pauseWasUser = false; ytPlayer.pauseVideo(); }
       openBetweenVideoOverlay(null, null, true);
     }
   }
@@ -3193,6 +3409,7 @@ function hideLessonBanner() {
 var ytPlayer=null, ytAPIReady=false, timer=null;
 var currentVideoId=null, currentVideoTitle='Unknown Video';
 var captureTimestamp=0, pauseWasUser=false;
+var capturedVideoId=null, capturedVideoTitle=null;
 var cinemaModeOn = false;
 
 document.getElementById('btn-cinema').addEventListener('click', function() {
@@ -3314,6 +3531,22 @@ function hideBanner() {
   var b=document.getElementById('returning-banner'); if(b) b.style.display='none';
 }
 
+// Re-anchor activeLessonClipIdx to whichever clip contains seekTime.
+// Called after every seek so checkClipBoundary never monitors a stale clip.
+function reanchorClipForTime(seekTime) {
+  if (!activeLessonData) return;
+  var vid = activeLessonData.videos[activeLessonVideoIdx];
+  if (!vid) return;
+  var clips = normalizeVideoClips(vid);
+  var idx = 0;
+  for (var i = 0; i < clips.length; i++) {
+    if ((clips[i].start_seconds || 0) <= seekTime) idx = i;
+  }
+  activeLessonClipIdx   = idx;
+  clipBoundaryTriggered = false; // re-arm so boundary detection works from new position
+  showLessonBanner();
+}
+
 function loadVideo(videoId, seekTo) {
   if(!ytAPIReady){setStatus('YouTube API still loading — try again.',true);return;}
   resetScreen(); // calls hideLessonBanner() — re-show below if lesson is active
@@ -3332,7 +3565,7 @@ function loadVideo(videoId, seekTo) {
 
   ytPlayer=new YT.Player('yt-player',{
     videoId:videoId,
-    playerVars:{autoplay:1,modestbranding:1,rel:0,fs:0},
+    playerVars:{autoplay:1,modestbranding:1,rel:0,fs:0,controls:activeLessonData?0:1},
     events:{
       onReady:function(e){
         if(seekTo) e.target.seekTo(seekTo,true);
@@ -3397,12 +3630,22 @@ document.getElementById('btn-playpause').addEventListener('click',function(){
 document.getElementById('btn-rewind').addEventListener('click',function(){
   if(!ytPlayer) return;
   pauseWasUser=false;
-  ytPlayer.seekTo(Math.max(0,ytPlayer.getCurrentTime()-10),true);updateProgress();
+  var newTime=Math.max(0,ytPlayer.getCurrentTime()-10);
+  ytPlayer.seekTo(newTime,true);
+  reanchorClipForTime(newTime);
+  var dur=ytPlayer.getDuration()||0;
+  if(dur>0) document.getElementById('progress-bar').value=(newTime/dur)*100;
+  document.getElementById('time-label').textContent=fmt(newTime)+' / '+fmt(dur);
 });
 document.getElementById('btn-forward').addEventListener('click',function(){
   if(!ytPlayer) return;
   pauseWasUser=false;
-  ytPlayer.seekTo(ytPlayer.getCurrentTime()+10,true);updateProgress();
+  var newTime=ytPlayer.getCurrentTime()+10;
+  ytPlayer.seekTo(newTime,true);
+  reanchorClipForTime(newTime);
+  var dur=ytPlayer.getDuration()||0;
+  if(dur>0) document.getElementById('progress-bar').value=(newTime/dur)*100;
+  document.getElementById('time-label').textContent=fmt(newTime)+' / '+fmt(dur);
 });
 document.getElementById('btn-stop').addEventListener('click',function(){
   resetScreen();renderNotes();setStatus('Stopped. Load a new video above.');
@@ -3419,8 +3662,13 @@ document.getElementById('btn-download-notes').addEventListener('click', download
 document.getElementById('progress-bar').addEventListener('input',function(){
   if(!ytPlayer||typeof ytPlayer.getDuration!=='function') return;
   pauseWasUser=false;
-  ytPlayer.seekTo((parseFloat(this.value)/100)*ytPlayer.getDuration(),true);
-  updateProgress();
+  var dur=ytPlayer.getDuration();
+  var newTime=(parseFloat(this.value)/100)*dur;
+  ytPlayer.seekTo(newTime,true);
+  reanchorClipForTime(newTime);
+  // Use the intended seek time for display — getCurrentTime() right after seekTo()
+  // may return the pre-seek position and cause a false clip-boundary trigger.
+  document.getElementById('time-label').textContent=fmt(newTime)+' / '+fmt(dur);
 });
 document.getElementById('yt-url').addEventListener('keydown',function(e){
   if(e.key==='Enter') document.getElementById('btn-load').click();
@@ -3429,6 +3677,10 @@ document.getElementById('yt-url').addEventListener('keydown',function(e){
 // ─── THOUGHT MODAL ───────────────────────────────────────
 function openThoughtModal(timestamp){
   captureTimestamp=timestamp;
+  // Snapshot video context now — currentVideoId/Title may change after modal opens
+  // (e.g. a stale clip-boundary fires loadVideo while the modal is open).
+  capturedVideoId=currentVideoId;
+  capturedVideoTitle=currentVideoTitle;
   document.getElementById('modal-ts').textContent=fmt(timestamp);
   document.getElementById('thought-text').value='';
   document.getElementById('thought-overlay').classList.add('open');
@@ -3441,7 +3693,6 @@ function closeThoughtModal(){
 }
 function saveThought(){
   var text=document.getElementById('thought-text').value.trim();
-  if(!currentVideoId){ closeThoughtModal(); return; }
   if(!text && isRecording){
     // iOS delivers isFinal=true only after recognition.stop() — defer the save.
     // recognition.onend will complete it once the final result is flushed.
@@ -3450,7 +3701,13 @@ function saveThought(){
     return;
   }
   if(!text){ closeThoughtModal(); return; }
-  appendNote({type:'thought',videoId:currentVideoId,videoTitle:currentVideoTitle,time:captureTimestamp,note:text,savedAt:Date.now(),savedAtStr:tsNow()});
+  // Use the video context snapshotted when the modal opened — not the live globals,
+  // which may have changed if a stale clip-boundary fired loadVideo() mid-session.
+  var vid=capturedVideoId||currentVideoId;
+  var vtitle=capturedVideoTitle||currentVideoTitle;
+  var note={type:'thought',videoId:vid||'_unanchored',videoTitle:vtitle||'Unknown',time:captureTimestamp,note:text,savedAt:Date.now(),savedAtStr:tsNow()};
+  if(!vid) note.unanchored=true;
+  appendNote(note);
   renderNotes();
   setStatus('Thought saved at '+fmt(captureTimestamp));
   closeThoughtModal();
@@ -3505,8 +3762,13 @@ document.getElementById('btn-mic').addEventListener('click',function(){
     if(pendingSave){
       pendingSave=false;
       var text=(ta.value||lastInterim).trim();
-      if(text&&currentVideoId){
-        appendNote({type:'thought',videoId:currentVideoId,videoTitle:currentVideoTitle,time:captureTimestamp,note:text,savedAt:Date.now(),savedAtStr:tsNow()});
+      if(text){
+        // Use snapshotted context — currentVideoId may be stale/null by the time onend fires.
+        var vid=capturedVideoId||currentVideoId;
+        var vtitle=capturedVideoTitle||currentVideoTitle;
+        var note={type:'thought',videoId:vid||'_unanchored',videoTitle:vtitle||'Unknown',time:captureTimestamp,note:text,savedAt:Date.now(),savedAtStr:tsNow()};
+        if(!vid) note.unanchored=true;
+        appendNote(note);
         renderNotes();
         setStatus('Thought saved at '+fmt(captureTimestamp));
       }
@@ -4219,23 +4481,8 @@ function showPreviewPage(token) {
         });
       }
 
-      // If the lesson has a batch_id, fetch videos across all batch members —
-      // videos may have been saved under a different batch member's id
-      if (lesson.batch_id) {
-        console.log('[preview] batch_id found:', lesson.batch_id, '— fetching all batch lesson ids');
-        sb.from('lessons')
-          .select('id')
-          .eq('batch_id', lesson.batch_id)
-          .then(function(rb) {
-            var ids = (!rb.error && rb.data && rb.data.length)
-              ? rb.data.map(function(l) { return l.id; })
-              : [lesson.id];
-            console.log('[preview] fetching lesson_videos for ids:', ids);
-            fetchAndRenderVideos(ids);
-          });
-      } else {
-        fetchAndRenderVideos([lesson.id]);
-      }
+      // Videos are always stored under the shared lesson's own id.
+      fetchAndRenderVideos([lesson.id]);
     });
 }
 
@@ -4382,9 +4629,7 @@ function renderPreviewPage(screen, lesson, videos, token) {
     });
   } else {
     document.getElementById('btn-sp-get').addEventListener('click', function() {
-      try { sessionStorage.setItem('pendingShareToken', token); } catch(e) {}
-      window.history.replaceState({}, '', window.location.pathname);
-      location.reload();
+      showOnboardingRole();
     });
   }
 }
@@ -4540,6 +4785,201 @@ document.getElementById('assign-confirm').addEventListener('click', function() {
 });
 
 // ═══════════════════════════════════════════════════════════
+// ONBOARDING — share link, new user (no existing profiles)
+// ═══════════════════════════════════════════════════════════
+
+function obHideAll() {
+  document.getElementById('profile-screen').style.display          = 'none';
+  document.getElementById('player-screen').style.display           = 'none';
+  document.getElementById('share-preview-screen').style.display    = 'none';
+  document.getElementById('onboarding-role-screen').style.display  = 'none';
+  document.getElementById('onboarding-name-screen').style.display  = 'none';
+  document.getElementById('onboarding-maker-screen').style.display = 'none';
+  document.querySelector('.header').style.display                  = 'none';
+}
+
+function showOnboardingRole() {
+  obHideAll();
+  var title = (previewLessonData && previewLessonData.title) ? previewLessonData.title : '';
+  var label = title ? 'Setting up: ' + title : '';
+  document.getElementById('ob-setup-label').textContent       = label;
+  document.getElementById('ob-name-setup-label').textContent  = label;
+  document.getElementById('ob-maker-setup-label').textContent = label;
+  document.getElementById('onboarding-role-screen').style.display = 'flex';
+}
+
+document.getElementById('ob-card-learner').addEventListener('click', function() {
+  document.getElementById('onboarding-role-screen').style.display = 'none';
+  var inp = document.getElementById('ob-name-input');
+  inp.value = '';
+  document.getElementById('ob-start-btn').disabled = true;
+  document.getElementById('onboarding-name-screen').style.display = 'flex';
+  setTimeout(function() { inp.focus(); }, 50);
+});
+
+// ── Maker onboarding (Screen 3B) ──────────────────────────
+var makerLearners = [];
+
+function renderMakerChips() {
+  var container = document.getElementById('ob-learner-chips');
+  container.innerHTML = '';
+  makerLearners.forEach(function(name, i) {
+    var chip = document.createElement('div');
+    chip.className = 'ob-chip';
+    var rm = document.createElement('button');
+    rm.className = 'ob-chip-remove';
+    rm.setAttribute('aria-label', 'Remove ' + name);
+    rm.textContent = '\u00d7';
+    rm.dataset.i = i;
+    rm.addEventListener('click', function() {
+      makerLearners.splice(parseInt(this.dataset.i), 1);
+      renderMakerChips();
+      document.getElementById('ob-maker-start-btn').disabled = makerLearners.length === 0;
+    });
+    var label = document.createElement('span');
+    label.className = 'ob-chip-name';
+    label.textContent = name;
+    chip.appendChild(label);
+    chip.appendChild(rm);
+    container.appendChild(chip);
+  });
+}
+
+function obMakerAddLearner() {
+  var inp = document.getElementById('ob-learner-input');
+  var name = inp.value.trim();
+  if (!name) return;
+  makerLearners.push(name);
+  inp.value = '';
+  renderMakerChips();
+  document.getElementById('ob-maker-start-btn').disabled = false;
+  inp.focus();
+}
+
+document.getElementById('ob-card-maker').addEventListener('click', function() {
+  document.getElementById('onboarding-role-screen').style.display  = 'none';
+  document.getElementById('onboarding-maker-screen').style.display = 'flex';
+  setTimeout(function() { document.getElementById('ob-learner-input').focus(); }, 50);
+});
+
+document.getElementById('ob-back-to-role').addEventListener('click', function() {
+  document.getElementById('onboarding-name-screen').style.display = 'none';
+  document.getElementById('onboarding-role-screen').style.display = 'flex';
+});
+
+document.getElementById('ob-back-to-role-from-maker').addEventListener('click', function() {
+  document.getElementById('onboarding-maker-screen').style.display = 'none';
+  document.getElementById('onboarding-role-screen').style.display  = 'flex';
+});
+
+document.getElementById('ob-learner-add').addEventListener('click', obMakerAddLearner);
+
+document.getElementById('ob-learner-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); obMakerAddLearner(); }
+});
+
+document.getElementById('ob-maker-start-btn').addEventListener('click', function() {
+  if (!makerLearners.length || !previewLessonData) return;
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Loading\u2026';
+
+  var makerName = document.getElementById('ob-maker-name-input').value.trim();
+  if (makerName) {
+    try { localStorage.setItem('focusplayer_maker_name', makerName); } catch(e) {}
+  }
+
+  var profiles = loadProfiles();
+  var now = Date.now();
+  var newProfiles = makerLearners.map(function(name, i) {
+    return { id: 'u_' + (now + i), name: name, color: AVATAR_COLORS[i % AVATAR_COLORS.length], role: 'learner' };
+  });
+  newProfiles.forEach(function(p) { profiles.push(p); });
+  saveProfiles(profiles);
+
+  // Import shared lesson for each learner.
+  // previewVideos is already in memory so buildAndSave runs synchronously.
+  var firstProfile = newProfiles[0];
+  var firstLesson  = null;
+  newProfiles.forEach(function(p, i) {
+    var lesson = importSharedLesson(previewLessonData, previewVideos, p.id, null);
+    if (i === 0) firstLesson = lesson;
+  });
+
+  setActiveProfile(firstProfile);
+  document.getElementById('onboarding-maker-screen').style.display = 'none';
+  window.history.replaceState({}, '', window.location.pathname);
+  showPlayer();
+  if (firstLesson && firstLesson.videos && firstLesson.videos.length) {
+    launchLessonFresh(firstLesson);
+  }
+});
+
+document.getElementById('ob-name-input').addEventListener('input', function() {
+  document.getElementById('ob-start-btn').disabled = !this.value.trim();
+});
+
+document.getElementById('ob-name-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && this.value.trim()) {
+    document.getElementById('ob-start-btn').click();
+  }
+});
+
+document.getElementById('ob-start-btn').addEventListener('click', function() {
+  var name = document.getElementById('ob-name-input').value.trim();
+  if (!name || !previewLessonData) return;
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Loading\u2026';
+  var profiles   = loadProfiles();
+  var newProfile = { id: 'u_' + Date.now(), name: name, color: AVATAR_COLORS[0], role: 'learner' };
+  profiles.push(newProfile);
+  saveProfiles(profiles);
+  setActiveProfile(newProfile);
+  importSharedLesson(previewLessonData, previewVideos, newProfile.id, function(newLesson) {
+    document.getElementById('onboarding-name-screen').style.display = 'none';
+    window.history.replaceState({}, '', window.location.pathname);
+    showPlayer();
+    if (newLesson && newLesson.videos && newLesson.videos.length) {
+      launchLessonFresh(newLesson);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// RETURNING USER — load shared lesson directly into player
+// ═══════════════════════════════════════════════════════════
+function loadSharedLessonForReturningUser(token) {
+  // Pick the profile to load under: last active, or first learner, or first profile.
+  var profile = getActiveProfile();
+  if (!profile) {
+    var all = loadProfiles();
+    profile = all.find(function(p) { return p.role === 'learner'; }) || all[0];
+  }
+
+  // Show the player shell immediately so the user sees their profile bar.
+  setActiveProfile(profile);
+  showPlayer();
+  window.history.replaceState({}, '', window.location.pathname);
+
+  if (!sb) return; // no Supabase connection — player shows its own empty state
+
+  sb.from('lessons')
+    .select('id, batch_id, curator_id, title, share_notes, auto_advance, pause_between_clips')
+    .eq('share_token', token)
+    .eq('is_public', true)
+    .limit(1)
+    .then(function(r) {
+      if (r.error || !r.data || !r.data.length) return;
+      importSharedLesson(r.data[0], [], profile.id, function(newLesson) {
+        if (newLesson && newLesson.videos && newLesson.videos.length) {
+          launchLessonFresh(newLesson);
+        }
+      });
+    });
+}
+
+// ═══════════════════════════════════════════════════════════
 // INIT — show profile screen or jump straight to player
 // ═══════════════════════════════════════════════════════════
 (function init(){
@@ -4547,7 +4987,14 @@ document.getElementById('assign-confirm').addEventListener('click', function() {
   var urlParams  = new URLSearchParams(window.location.search);
   var shareToken = urlParams.get('share');
   if (shareToken) {
-    showPreviewPage(shareToken);
+    var profiles = loadProfiles();
+    if (profiles.length === 0) {
+      // New user — show preview page so onboarding CTA is available.
+      showPreviewPage(shareToken);
+    } else {
+      // Returning user — skip preview, load lesson straight into the player.
+      loadSharedLessonForReturningUser(shareToken);
+    }
     return;
   }
 
