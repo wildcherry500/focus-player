@@ -472,6 +472,56 @@
   #ap-save { background: var(--cobalt); color: #fff; }
   #ap-save:hover { background: #2d4ab5; }
 
+  /* ── EMAIL CAPTURE MODAL ── */
+  #email-capture-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65); z-index: 200;
+    align-items: center; justify-content: center; padding: 1rem;
+  }
+  #email-capture-overlay.open { display: flex; }
+  #email-capture-modal {
+    background: var(--card); border: 2px solid var(--border);
+    width: 100%; max-width: 380px; overflow: hidden;
+    animation: slideUp 0.2s ease;
+  }
+  .ec-header {
+    background: var(--fg); color: #fff; padding: 1rem 1.25rem;
+  }
+  .ec-heading {
+    font-family: 'DM Sans', sans-serif; font-size: 1.15rem; font-weight: 700;
+    margin: 0 0 0.4rem;
+  }
+  .ec-subheading {
+    font-family: 'DM Sans', sans-serif; font-size: 0.82rem; opacity: 0.8;
+    line-height: 1.4; margin: 0;
+  }
+  .ec-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  #ec-email {
+    width: 100%; font-family: 'DM Sans', sans-serif; font-size: 1rem;
+    padding: 0.55rem 0.75rem; border: 2px solid var(--border);
+    background: var(--bg); color: var(--fg); outline: none;
+    box-sizing: border-box;
+  }
+  #ec-email:focus { background: #fff; border-color: var(--blue); }
+  #ec-submit {
+    width: 100%; padding: 0.75rem; font-family: 'DM Sans', sans-serif;
+    font-size: 1rem; font-weight: 700; border: none; cursor: pointer;
+    background: var(--accent); color: #fff; letter-spacing: 0.01em;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  #ec-submit:disabled { opacity: 0.45; cursor: default; }
+  #ec-submit:not(:disabled):hover { background: #e08c45; }
+  #ec-success {
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: #2d7a3a;
+    text-align: center; font-weight: 600; display: none;
+  }
+  #ec-skip {
+    display: block; text-align: center; font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem; color: var(--muted); cursor: pointer; background: none;
+    border: none; padding: 0; text-decoration: underline; width: 100%;
+  }
+  #ec-skip:hover { color: var(--fg); }
+
   /* BOOKMARKS */
   #bookmark-section { border-top: 2px solid var(--border); }
   .bm-toolbar {
@@ -1445,6 +1495,22 @@
       font-size: 16px;
     }
 
+    /* ── Email capture modal ── */
+    #email-capture-overlay {
+      align-items: flex-end;
+      padding: 0;
+    }
+    #email-capture-modal {
+      width: 100%;
+      max-width: 100%;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+    }
+    #ec-email {
+      font-size: 16px;
+    }
+
     /* ── Lesson builder ── */
     #lesson-builder-panel {
       max-height: 95vh;
@@ -1945,6 +2011,22 @@
   </div>
 </div>
 
+<!-- EMAIL CAPTURE MODAL -->
+<div id="email-capture-overlay">
+  <div id="email-capture-modal">
+    <div class="ec-header">
+      <div class="ec-heading">Save your lessons and share them</div>
+      <div class="ec-subheading">Create your free account to build lessons, share them with your students, and track their notes.</div>
+    </div>
+    <div class="ec-body">
+      <input type="email" id="ec-email" placeholder="Your email" autocomplete="email" />
+      <button type="button" id="ec-submit" disabled>Create Free Account &#x2192;</button>
+      <div id="ec-success">You&#x2019;re in! Building your lesson now...</div>
+      <button type="button" id="ec-skip">Try the builder first &#x2192;</button>
+    </div>
+  </div>
+</div>
+
 <!-- LESSON BUILDER PANEL -->
 <div id="lesson-builder-overlay">
   <div id="lesson-builder-panel">
@@ -2114,6 +2196,9 @@ var AVATAR_COLORS = [
 var selectedColor = AVATAR_COLORS[0];
 var selectedRole  = 'learner';
 var activeProfile = null; // { id, name, color, role }
+var _incomingShareRef = null;  // ?ref= param captured at page load
+var _incomingShareVia = null;  // ?via= param captured at page load
+var _shareIsReturning = false; // true if user had profiles when share link was opened
 
 function loadProfiles() {
   try { return JSON.parse(localStorage.getItem(PROFILES_KEY)) || []; }
@@ -2356,7 +2441,7 @@ function showProfileScreen() {
 }
 
 document.getElementById('btn-switch').addEventListener('click', showProfileScreen);
-document.getElementById('btn-build-lesson').addEventListener('click', openLessonBuilder);
+document.getElementById('btn-build-lesson').addEventListener('click', openNewLessonWithEmailGate);
 document.getElementById('btn-my-lessons').addEventListener('click', openMyLessons);
 document.getElementById('btn-watch-learn').addEventListener('click', enterWatchLearnMode);
 document.getElementById('btn-exit-watch-learn').addEventListener('click', exitWatchLearnMode);
@@ -2540,7 +2625,7 @@ function renderMyLessons() {
 document.getElementById('btn-ml-close').addEventListener('click', closeMyLessons);
 document.getElementById('btn-ml-new').addEventListener('click', function() {
   closeMyLessons();
-  openLessonBuilder();
+  openNewLessonWithEmailGate();
 });
 document.getElementById('my-lessons-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeMyLessons();
@@ -2603,6 +2688,67 @@ function getCheckedLearnerIds() {
   var ids = [];
   boxes.forEach(function(cb){ ids.push(cb.value); });
   return ids;
+}
+
+// ── EMAIL CAPTURE GATE ──
+var emailCaptureCallback = null;
+
+function openEmailCapture(cb) {
+  emailCaptureCallback = cb;
+  document.getElementById('ec-email').value = '';
+  document.getElementById('ec-submit').disabled = true;
+  document.getElementById('ec-success').style.display = 'none';
+  document.getElementById('ec-submit').style.display = '';
+  document.getElementById('ec-skip').style.display = '';
+  document.getElementById('email-capture-overlay').classList.add('open');
+  setTimeout(function(){ document.getElementById('ec-email').focus(); }, 150);
+}
+
+function closeEmailCapture() {
+  document.getElementById('email-capture-overlay').classList.remove('open');
+  emailCaptureCallback = null;
+}
+
+function maybeShowEmailCapture(cb) {
+  // Safety guard: NEVER show to learners
+  if (!activeProfile || activeProfile.role !== 'lesson-maker') return;
+  var saved = '';
+  try { saved = localStorage.getItem('lessonMakerEmail') || ''; } catch(e) {}
+  if (saved) { cb(); return; }
+  openEmailCapture(cb);
+}
+
+document.getElementById('ec-email').addEventListener('input', function() {
+  var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value.trim());
+  document.getElementById('ec-submit').disabled = !valid;
+});
+
+document.getElementById('ec-submit').addEventListener('click', function() {
+  var email = document.getElementById('ec-email').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+  try { localStorage.setItem('lessonMakerEmail', email); } catch(e) {}
+  document.getElementById('ec-submit').style.display = 'none';
+  document.getElementById('ec-skip').style.display = 'none';
+  document.getElementById('ec-success').style.display = 'block';
+  var cb = emailCaptureCallback;
+  setTimeout(function() {
+    closeEmailCapture();
+    if (cb) cb();
+  }, 1500);
+});
+
+document.getElementById('ec-skip').addEventListener('click', function() {
+  var cb = emailCaptureCallback;
+  closeEmailCapture();
+  if (cb) cb();
+});
+
+document.getElementById('email-capture-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeEmailCapture();
+});
+
+function openNewLessonWithEmailGate() {
+  maybeShowEmailCapture(openLessonBuilder);
 }
 
 function openLessonBuilder() {
@@ -4212,7 +4358,9 @@ function openShareModal(lesson, group) {
   document.getElementById('sm-copied-msg').classList.remove('show');
   var linkSection = document.getElementById('sm-link-section');
   if (lesson.shareToken) {
-    document.getElementById('share-url-field').value = 'https://focusplayermvp.netlify.app?share=' + lesson.shareToken;
+    var _smRef = (activeProfile && activeProfile.id) ? '&ref=' + activeProfile.id : '';
+    var _smVia = (_incomingShareRef && activeProfile && _incomingShareRef !== activeProfile.id) ? '&via=' + _incomingShareRef : '';
+    document.getElementById('share-url-field').value = 'https://focusplayermvp.netlify.app?share=' + lesson.shareToken + _smRef + _smVia;
     linkSection.classList.add('visible');
   } else {
     linkSection.classList.remove('visible');
@@ -4236,7 +4384,9 @@ document.getElementById('btn-generate-share').addEventListener('click', function
   if (!shareModalLesson) return;
   var token = shareModalLesson.shareToken || generateShareToken(shareModalLesson.title);
   var includeNotes = document.getElementById('sm-include-notes').checked;
-  var shareUrl = 'https://focusplayermvp.netlify.app?share=' + token;
+  var _gsRef = (activeProfile && activeProfile.id) ? '&ref=' + activeProfile.id : '';
+  var _gsVia = (_incomingShareRef && activeProfile && _incomingShareRef !== activeProfile.id) ? '&via=' + _incomingShareRef : '';
+  var shareUrl = 'https://focusplayermvp.netlify.app?share=' + token + _gsRef + _gsVia;
 
   // Update localStorage for all lessons in batch
   var all = loadAllLessons();
@@ -4498,6 +4648,7 @@ function showPreviewPage(token) {
           previewLessonData = lesson;
           previewVideos     = videos;
           renderPreviewPage(screen, lesson, videos, token);
+          logShareEvent(lesson.id, token);
         });
       }
 
@@ -4991,12 +5142,30 @@ function loadSharedLessonForReturningUser(token) {
     .limit(1)
     .then(function(r) {
       if (r.error || !r.data || !r.data.length) return;
+      logShareEvent(r.data[0].id, token);
       importSharedLesson(r.data[0], [], profile.id, function(newLesson) {
         if (newLesson && newLesson.videos && newLesson.videos.length) {
           launchLessonFresh(newLesson);
         }
       });
     });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SHARE EVENT TRACKING
+// ═══════════════════════════════════════════════════════════
+function logShareEvent(lessonId, token) {
+  try {
+    if (!sb) return;
+    sb.from('share_events').insert([{
+      lesson_id:         lessonId || null,
+      share_token:       token,
+      ref_profile_id:    _incomingShareRef || null,
+      via_profile_id:    _incomingShareVia || null,
+      is_returning_user: _shareIsReturning,
+      device_type:       window.screen.width <= 768 ? 'mobile' : 'desktop'
+    }]).then(function() {});
+  } catch (e) {}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -5008,6 +5177,10 @@ function loadSharedLessonForReturningUser(token) {
   var shareToken = urlParams.get('share');
   if (shareToken) {
     var profiles = loadProfiles();
+    // Capture tracking context before URL is cleaned up
+    _incomingShareRef = urlParams.get('ref') || null;
+    _incomingShareVia = urlParams.get('via') || null;
+    _shareIsReturning = profiles.length > 0;
     if (profiles.length === 0) {
       // New user — show preview page so onboarding CTA is available.
       showPreviewPage(shareToken);
