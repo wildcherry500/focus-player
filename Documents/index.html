@@ -2726,7 +2726,30 @@ document.getElementById('ec-email').addEventListener('input', function() {
 document.getElementById('ec-submit').addEventListener('click', function() {
   var email = document.getElementById('ec-email').value.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+  // localStorage always writes first
   try { localStorage.setItem('lessonMakerEmail', email); } catch(e) {}
+  // Supabase sync — async, fail silently
+  try {
+    if (sb) {
+      var _ecName   = (activeProfile && activeProfile.name) ? activeProfile.name : null;
+      var _ecProfId = (activeProfile && activeProfile.id)   ? activeProfile.id   : null;
+      var _ecRef    = _incomingShareRef || null;
+      var _ecNow    = new Date().toISOString();
+      sb.from('lesson_maker_accounts')
+        .insert([{ email: email, name: _ecName, profile_id: _ecProfId, ref_share_token: _ecRef, last_seen_at: _ecNow }])
+        .then(function(r) {
+          if (r.error && r.error.code === '23505') {
+            // Duplicate email — update last_seen_at only
+            try {
+              sb.from('lesson_maker_accounts')
+                .update({ last_seen_at: new Date().toISOString() })
+                .eq('email', email)
+                .then(function() {});
+            } catch(e) {}
+          }
+        });
+    }
+  } catch(e) {}
   document.getElementById('ec-submit').style.display = 'none';
   document.getElementById('ec-skip').style.display = 'none';
   document.getElementById('ec-success').style.display = 'block';
@@ -3971,12 +3994,26 @@ if(sb) flushSbQueue(); // sb already ready (synchronous CDN load)
 
 // ─── SUPABASE TABLE HELPERS ───────────────────────────────
 function sbSyncProfile(profile){
-  var payload = { id: profile.id, name: profile.name, color: profile.color };
+  var payload = { id: profile.id, name: profile.name, color: profile.color, role: profile.role || 'learner' };
+  if (profile.role === 'lesson-maker') {
+    try { var _em = localStorage.getItem('lessonMakerEmail'); if (_em) payload.email = _em; } catch(e) {}
+  }
   sbWrite(function(sb){
     sb.from('profiles').upsert([payload]).then(function(r){
       if(r.error) console.error('sbSyncProfile error', r.error);
     });
   });
+}
+
+function touchLessonMakerLastSeen() {
+  try {
+    var _email = localStorage.getItem('lessonMakerEmail');
+    if (!_email || !sb) return;
+    sb.from('lesson_maker_accounts')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('email', _email)
+      .then(function() {});
+  } catch(e) {}
 }
 
 function sbSyncVideo(videoId, videoTitle){
@@ -5132,6 +5169,7 @@ function loadSharedLessonForReturningUser(token) {
   setActiveProfile(profile);
   showPlayer();
   window.history.replaceState({}, '', window.location.pathname);
+  if (profile.role === 'lesson-maker') touchLessonMakerLastSeen();
 
   if (!sb) return; // no Supabase connection — player shows its own empty state
 
@@ -5200,6 +5238,7 @@ function logShareEvent(lessonId, token) {
   } else if(existing){
     setActiveProfile(existing);
     showPlayer();
+    if (existing.role === 'lesson-maker') touchLessonMakerLastSeen();
   } else {
     renderProfileScreen();
     document.getElementById('profile-screen').style.display='block';
