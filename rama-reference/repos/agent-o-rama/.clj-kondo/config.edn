@@ -1,0 +1,11 @@
+{:config-paths ["../resource/clj-kondo.exports/com.rpl/agent-o-rama"]
+ :lint-as
+ {uix.core/defui clojure.core/defn}
+ :hooks
+ {:analyze-call
+  {com.rpl.agent-o-rama.ui.etaoin-test-helpers/with-webdriver
+   hooks.etaoin-test-helpers/with-webdriver
+   com.rpl.agent-o-rama.ui.etaoin-test-helpers/with-system
+   hooks.etaoin-test-helpers/with-system
+   com.rpl.test-helpers/letlocals
+   hooks.test-helpers/letlocals}}}

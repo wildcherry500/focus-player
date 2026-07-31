@@ -1,0 +1,117 @@
+(def VERSION (.trim (slurp "VERSION")))
+
+(defproject com.rpl/agent-o-rama VERSION
+  :source-paths ["src/clj" "src/cljs" "resource"]
+  :java-source-paths ["src/java"]
+  :aot [com.rpl.agent-o-rama.impl.ui.launch]
+  :test-paths ["test/clj"]
+  :jvm-opts ["-Xss6m"
+             "-Xms6g"
+             "-Xmx6g"
+             "-XX:+UseG1GC"
+             "-XX:MetaspaceSize=500000000"
+             ;; Ensure stack traces are not elided
+             "-XX:-OmitStackTraceInFastThrow"
+             ;; this gives us stack traces directly in output instead of an edn
+             ;; file in tmp, which will be lost on CI
+             "-Dclojure.main.report=stderr"
+             ;; allow termination of threads
+             "-Djdk.attach.allowAttachSelf"
+             ;; for java 25
+             "--enable-native-access=ALL-UNNAMED"]
+  :dependencies [[com.rpl/rama-helpers "0.10.0" :exclusions [org.clojure/clojure]]
+                 [com.github.f4b6a3/uuid-creator "6.1.1"]
+                 [dev.langchain4j/langchain4j
+                  "1.18.1"
+                  :exclusions
+                  [org.slf4j/slf4j-api]]
+                 [com.networknt/json-schema-validator
+                  "1.5.8"
+                  :exclusions
+                  [org.slf4j/slf4j-api
+                   com.fasterxml.jackson.core/jackson-databind
+                   com.fasterxml.jackson.dataformat/jackson-dataformat-yaml
+                   com.ethlo.time/itu]]
+                 [com.jayway.jsonpath/json-path
+                  "2.9.0"
+                  :exclusions
+                  [org.slf4j/slf4j-api]]
+                 [expound "0.9.0" :exclusions [org.clojure/clojure]]
+                 [http-kit "2.8.0" :exclusions [org.clojure/clojure]]
+
+                 ;; ui dependencies
+                 [ring/ring-core "1.9.5" :exclusions [org.clojure/clojure]]
+                 [ring/ring-codec "1.2.0" :exclusions [org.clojure/clojure]]
+                 [ring/ring-defaults "0.4.0" :exclusions [org.clojure/clojure]]
+                 [ring-cors/ring-cors "0.1.13" :exclusions [org.clojure/clojure]]
+                 [com.cognitect/transit-clj "1.0.333" :exclusions [org.clojure/clojure]]
+                 [com.cognitect/transit-cljs "0.8.280" :exclusions [org.clojure/clojure]]]
+  :test-selectors
+  {:default (complement #(re-find #"^com\.rpl\.agent\-o\-rama\.ui" (str (:ns %))))
+   :ui      #(re-find #"^com\.rpl\.agent\-o\-rama\.ui" (str (:ns %)))
+   :all     (constantly true)}
+  :global-vars {*warn-on-reflection* true}
+  :repositories
+  [["releases"
+    {:id  "maven-releases"
+     :url "https://nexus.redplanetlabs.com/repository/maven-public-releases"}]]
+  :profiles {:dev        {:resource-paths    ["test/resources/"]
+                          :source-paths      ["src/clj"
+                                              "src/cljs"
+                                              "resource"
+                                              "dev"
+                                              "examples/clj/src"
+                                              "examples/clj/test"]
+                          :java-source-paths ["src/java" "test/java"]
+                          :jvm-opts          ["-Xss6m"
+                                              "-Xms6g"
+                                              "-Xmx6g"]
+                          :dependencies
+                          [[meander/epsilon "0.0.650"]
+                           [dev.langchain4j/langchain4j-open-ai "1.18.1"]
+                           [dev.langchain4j/langchain4j-web-search-engine-tavily
+                            "1.8.0-beta15"]
+                           [thheller/shadow-cljs "3.1.7"]
+                           [etaoin "1.1.43"]
+                           [com.blockether/spel "0.7.11"]
+                           [clj-test-containers/clj-test-containers "0.7.4"]
+                           [org.testcontainers/testcontainers "2.0.3"]
+                           [clj-kondo "2025.09.22"]
+                           [org.clojars.abhinav/snitch "0.1.16"]]}
+             :examples   {:test-paths   ["examples/clj/test"]
+                          :source-paths ["examples/clj/src"]}
+             :provided   {:dependencies [[com.rpl/rama "1.9.0"]
+                                         [org.clojure/clojure "1.12.4"]]}
+             :gen        {:prep-tasks   []
+                          :source-paths ["scripts"]
+                          :dependencies [[comb "0.1.1"]
+                                         [org.clojure/clojure "1.12.4"]]}
+             :ui         {:source-paths ["test/cljs"]
+                          :dependencies [[com.rpl/specter "1.1.4"] ;; only cljs
+                                         [com.pitch/uix.core "1.4.3"]
+                                         [com.pitch/uix.dom "1.4.3"]
+                                         [re-frame "1.4.3"]
+                                         [com.shipclojure/re-frame-query "0.5.0"]
+                                         [thheller/shadow-cljs "3.1.7"]
+                                         [cider/cider-nrepl "0.57.0"]
+                                         [metosin/reitit-frontend "0.7.2"]
+                                         [metosin/reitit-malli "0.7.2"]
+                                         ;; to fix dynlink error on arm macs
+                                         [net.java.dev.jna/jna "5.17.0"]
+                                         [org.clojure/clojure "1.12.4"]
+                                         [prismatic/schema "1.4.1"]]}
+             :test       {:jvm-opts ["-Daor.test.runner=1"]}
+             :nrepl-port {:repl-options {:port 7888}}}
+  :codox {:source-paths ["src/clj"]
+          :metadata     {:doc/format :markdown}
+          :output-path  "target/doc"
+          :namespaces   [com.rpl.agent-o-rama
+                         com.rpl.agent-o-rama.langchain4j
+                         com.rpl.agent-o-rama.langchain4j.json
+                         com.rpl.agent-o-rama.store
+                         com.rpl.agent-o-rama.throttled-logging
+                         com.rpl.agent-o-rama.tools]}
+  :aliases {"test-all" ["with-profile" "+examples" "test"]}
+  :plugins [[lein-exec "0.3.7"]
+            [lein-codox "0.10.8"]
+            [lein-doo "0.1.11"]])

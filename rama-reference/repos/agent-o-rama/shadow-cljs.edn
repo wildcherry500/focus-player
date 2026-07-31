@@ -1,0 +1,24 @@
+{:lein   {:profile "+ui"}
+ :builds
+ {:dev
+  {:target           :browser
+   :output-dir       "resource/public/"
+   :modules          {:main {:init-fn com.rpl.agent-o-rama.ui/init}}
+   :compiler-options {:optimizations :none
+                      :source-map    true}}
+  :frontend
+  {:target           :browser
+   :modules          {:main {:init-fn com.rpl.agent-o-rama.ui/init}}
+   :output-dir       "resource/public/"
+   :module-hash-names true  ; Content hashing for cache busting
+   :compiler-options {:optimizations :advanced
+                      :infer-externs :auto}}
+  :test
+  {:target    :node-test
+   :output-to "target/test/test.js"
+   :autorun   true
+   :ns-regexp "-test$"
+   :dev-tools {:preloads [com.rpl.agent-o-rama.ui.dom]}
+   :esm       true}}
+ :nrepl  {:middleware [cider.nrepl/cider-middleware]
+          #_#_:port 61000}}

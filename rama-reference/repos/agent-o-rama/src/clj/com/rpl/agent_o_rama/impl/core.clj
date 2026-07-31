@@ -1,0 +1,466 @@
+(ns com.rpl.agent-o-rama.impl.core
+  (:use [com.rpl.rama]
+        [com.rpl.rama path])
+  (:require
+   [clojure.set :as set]
+   [com.rpl.agent-o-rama.impl.analytics :as ana]
+   [com.rpl.agent-o-rama.impl.datasets :as datasets]
+   [com.rpl.agent-o-rama.impl.evaluators :as evals]
+   [com.rpl.agent-o-rama.impl.experiments :as exp]
+   [com.rpl.agent-o-rama.impl.helpers :as h]
+   [com.rpl.agent-o-rama.impl.graph :as graph]
+   [com.rpl.agent-o-rama.impl.partitioner :as apart]
+   [com.rpl.agent-o-rama.impl.pobjects :as po]
+   [com.rpl.agent-o-rama.impl.queries :as queries]
+   [com.rpl.agent-o-rama.impl.retries :as retries]
+   [com.rpl.agent-o-rama.impl.topology :as at]
+   [com.rpl.agent-o-rama.impl.types :as aor-types]
+   [com.rpl.rama.ops :as ops])
+  (:import
+   [com.rpl.agentorama
+    AgentFailedException
+    AgentInvoke
+    AgentNode
+    AgentObjectOptions$Impl]
+   [com.rpl.agentorama.impl
+    RamaClientsTaskGlobal
+    AgentDeclaredObjectsTaskGlobal
+    AgentNodeExecutorTaskGlobal]
+   [com.rpl.agent_o_rama.impl.types
+    AggAckOp
+    ChangeConfig
+    EvaluatorEvent
+    ExperimentEvent
+    HumanFeedbackEvent
+    NodeOp
+    RuleEvent]
+   [com.rpl.rama
+    QueryTopologyClient]
+   [java.util.concurrent
+    CompletableFuture]))
+
+(def SUBSTITUTE-TICK-DEPOTS false)
+(def DEFAULT-GC-TICK-MILLIS 10000)
+(def DEFAULT-ANALYTICS-TICK-MILLIS 10000)
+
+;; for agent-o-rama namespace
+(defn hook:building-plain-agent-object [name o])
+(defn define-eval-agent? [] true)
+
+(defn- define-agent!
+  [agent-name setup topologies stream-topology mb-topology analytics-mb-topology agent-graph]
+  (let [agent-depot-sym           (symbol (po/agent-depot-name agent-name))
+        agent-streaming-depot-sym (symbol (po/agent-streaming-depot-name
+                                           agent-name))
+        agent-human-depot-sym     (symbol (po/agent-human-depot-name
+                                           agent-name))
+        agent-config-depot-sym    (symbol (po/agent-config-depot-name
+                                           agent-name))
+        agent-gc-tick-depot-sym   (symbol (po/agent-gc-tick-depot-name
+                                           agent-name))]
+    (declare-depot* setup agent-depot-sym apart/agent-depot-partitioner)
+    (declare-depot* setup
+                    agent-streaming-depot-sym
+                    apart/agent-task-id-depot-partitioner)
+    (declare-depot* setup
+                    agent-human-depot-sym
+                    apart/human-depot-partitioner)
+    (declare-depot* setup
+                    agent-config-depot-sym
+                    :random
+                    {:global? true})
+
+    (declare-pstate*
+     stream-topology
+     (symbol (po/agent-root-task-global-name agent-name))
+     po/AGENT-ROOT-PSTATE-SCHEMA
+     {:key-partitioner apart/task-id-key-partitioner})
+    (declare-pstate*
+     stream-topology
+     (symbol (po/agent-root-count-task-global-name agent-name))
+     Long
+     {:initial-value   0
+      :key-partitioner apart/task-id-key-partitioner})
+    (declare-pstate*
+     stream-topology
+     (symbol (po/agent-stream-shared-task-global-name agent-name))
+     po/AGENT-STREAM-SHARED-PSTATE-SCHEMA
+     {:key-partitioner apart/task-id-key-partitioner})
+    (declare-pstate*
+     stream-topology
+     (symbol (po/agent-node-task-global-name agent-name))
+     po/AGENT-NODE-PSTATE-SCHEMA
+     {:key-partitioner apart/task-id-key-partitioner})
+    (declare-pstate*
+     stream-topology
+     (symbol (po/agent-config-task-global-name agent-name))
+     po/AGENT-CONFIG-PSTATE-SCHEMA
+     {:key-partitioner apart/task-id-key-partitioner})
+    (declare-pstate*
+     stream-topology
+     (symbol (po/agent-rules-task-global-name agent-name))
+     po/AGENT-RULES-PSTATE-SCHEMA
+     {:global?       true
+      :initial-value (sorted-map)})
+
+
+    (if SUBSTITUTE-TICK-DEPOTS
+      (do
+        (declare-depot* setup
+                        (symbol (po/agent-check-tick-depot-name agent-name))
+                        :random
+                        {:global? true})
+        (declare-depot* setup
+                        agent-gc-tick-depot-sym
+                        :random
+                        {:global? true}))
+      (do
+        (declare-tick-depot* setup
+                             (symbol (po/agent-check-tick-depot-name
+                                      agent-name))
+                             retries/DEFAULT-CHECKER-TICK-MILLIS)
+        (declare-tick-depot* setup
+                             agent-gc-tick-depot-sym
+                             DEFAULT-GC-TICK-MILLIS)))
+    (declare-depot* setup
+                    (symbol (po/agent-failures-depot-name agent-name))
+                    :random)
+    (declare-depot* setup
+                    (symbol (po/agent-gc-valid-invokes-depot-name agent-name))
+                    :random)
+
+    (doseq [d [(symbol (po/agent-failures-depot-name agent-name))
+               (symbol (po/agent-gc-valid-invokes-depot-name agent-name))
+               agent-config-depot-sym
+               agent-streaming-depot-sym
+               agent-human-depot-sym
+               agent-depot-sym]]
+      (set-launch-depot-dynamic-option!* setup
+                                         d
+                                         "depot.max.entries.per.partition"
+                                         500))
+
+    (declare-pstate*
+     mb-topology
+     (symbol (po/agent-mb-shared-task-global-name agent-name))
+     po/AGENT-MB-SHARED-PSTATE-SCHEMA
+     {:key-partitioner apart/task-id-key-partitioner})
+    (declare-pstate*
+     analytics-mb-topology
+     (symbol (po/agent-rule-cursors-task-global-name agent-name))
+     po/AGENT-RULE-CURSORS-PSTATE-SCHEMA
+     {:global? true})
+    (declare-pstate*
+     analytics-mb-topology
+     (symbol (po/agent-metric-cursors-task-global-name agent-name))
+     po/AGENT-METRIC-CURSORS-PSTATE-SCHEMA)
+    (declare-pstate*
+     analytics-mb-topology
+     (symbol (po/agent-telemetry-task-global-name agent-name))
+     po/AGENT-TELEMETRY-PSTATE-SCHEMA)
+
+    (retries/declare-check-impl mb-topology agent-name)
+
+    (<<sources stream-topology
+     (source> agent-config-depot-sym {:retry-mode :all-after} :> *data)
+      (at/handle-config agent-name *data)
+
+     (source> agent-streaming-depot-sym {:retry-mode :all-after} :> *data)
+      (at/handle-streaming agent-name *data)
+
+     (source> agent-human-depot-sym :> *data)
+      (at/handle-human agent-name *data)
+
+     (source> agent-gc-tick-depot-sym)
+      (at/handle-gc agent-name)
+
+     (source> agent-depot-sym {:retry-mode :none} :> *data)
+      (at/intake-agent-depot agent-name
+                             *data
+                             :> *agent-task-id *agent-id *execution-context *retry-num *op)
+      (<<subsource *op
+       (case> NodeOp)
+        (at/handle-node-op agent-name *agent-task-id *agent-id *execution-context *retry-num *op)
+
+       (case> AggAckOp :> {:keys [*agg-invoke-id *ack-val]})
+        (at/ack-agg! agent-name *agg-invoke-id *execution-context *retry-num *ack-val)
+      )
+    )))
+
+(deframafn do-transform!*
+  [*path $$p]
+  (local-transform> *path $$p)
+  (:> {:type :success}))
+
+(defn do-transform!
+  [path pstate]
+  (try
+    (do-transform!* path pstate)
+    (catch Exception e
+      {:type      :failure
+       :exception e}
+    )))
+
+(defn hook:analytics-tick [])
+
+(defn define-agents!
+  [setup topologies stream-topology mb-topology analytics-mb-topology agent-graphs
+   store-info declared-objects evaluator-builders action-builders]
+  (declare-object* setup
+                   (symbol (po/agents-store-info-name))
+                   (aor-types/->valid-StoreInfo store-info))
+  (declare-object* setup
+                   (symbol (po/agents-clients-name))
+                   (RamaClientsTaskGlobal.
+                    (-> agent-graphs
+                        keys
+                        vec)))
+  (declare-object* setup
+                   (symbol (po/agent-node-executor-name))
+                   (AgentNodeExecutorTaskGlobal.))
+
+  (declare-object* setup
+                   (symbol (po/agent-declared-objects-name))
+                   (AgentDeclaredObjectsTaskGlobal.
+                    declared-objects
+                    evaluator-builders
+                    action-builders
+                    (transform MAP-VALS
+                               graph/resolve-agent-graph
+                               agent-graphs)
+                   ))
+  (let [pstate-write-depot-sym    (symbol (po/agent-pstate-write-depot-name))
+        datasets-depot-sym        (symbol (po/datasets-depot-name))
+        global-actions-depot-sym  (symbol (po/global-actions-depot-name))
+        analytics-tick-depot-sym  (symbol (po/agent-analytics-tick-depot-name))
+        agent-edit-depot-sym      (symbol (po/agent-edit-depot-name))
+        human-analytics-depot-sym (symbol (po/human-analytics-depot-name))]
+    (declare-depot* setup pstate-write-depot-sym (hash-by :key))
+    (declare-depot* setup datasets-depot-sym (hash-by :dataset-id))
+    (declare-depot* setup agent-edit-depot-sym apart/agent-task-id-depot-partitioner)
+    (declare-depot* setup human-analytics-depot-sym :disallow)
+    (declare-depot* setup global-actions-depot-sym :random {:global? true})
+    (if SUBSTITUTE-TICK-DEPOTS
+      (declare-depot* setup
+                      analytics-tick-depot-sym
+                      :random
+                      {:global? true})
+      (declare-tick-depot* setup
+                           analytics-tick-depot-sym
+                           DEFAULT-ANALYTICS-TICK-MILLIS))
+    (declare-pstate*
+     stream-topology
+     (symbol (po/datasets-task-global-name))
+     po/DATASETS-PSTATE-SCHEMA)
+    (declare-pstate*
+     stream-topology
+     (symbol (po/evaluators-task-global-name))
+     po/EVALUATORS-PSTATE-SCHEMA
+     {:global? true})
+    (declare-pstate*
+     stream-topology
+     (symbol (po/human-feedback-task-global-name))
+     po/HUMAN-FEEDBACK-PSTATE-SCHEMA
+     {:global? true})
+    (declare-pstate*
+     stream-topology
+     (symbol (po/agent-global-config-task-global-name))
+     po/AGENT-CONFIG-PSTATE-SCHEMA
+     {:key-partitioner apart/task-id-key-partitioner})
+
+    (declare-pstate*
+     analytics-mb-topology
+     (symbol (po/action-log-task-global-name))
+     po/ACTION-LOG-PSTATE-SCHEMA
+     {:key-partitioner apart/task-id-key-partitioner})
+
+    (doseq [depot-sym [pstate-write-depot-sym datasets-depot-sym
+                       global-actions-depot-sym agent-edit-depot-sym
+                       human-analytics-depot-sym]]
+      (set-launch-depot-dynamic-option!* setup
+                                         depot-sym
+                                         "depot.max.entries.per.partition"
+                                         500))
+    (<<sources analytics-mb-topology
+     (source> analytics-tick-depot-sym :> %mb)
+      (%mb)
+      (hook:analytics-tick)
+      (ana/handle-analytics-tick)
+
+     (source> human-analytics-depot-sym :> %mb)
+      (ana/handle-human-analytics %mb)
+    )
+    (<<sources stream-topology
+     (source> pstate-write-depot-sym
+               {:retry-mode :none}
+              :> {:keys [*agent-source *pstate-name *path *key]})
+      (identity *agent-source :> {:keys [*agent-name *agent-task-id *agent-id *retry-num]})
+      (<<if (or> (nil? *agent-source)
+                 (apart/valid-retry-num? *agent-name
+                                         *agent-task-id
+                                         *agent-id
+                                         *retry-num))
+        (<<if (aor-types/DirectTaskId? *key)
+          (|direct (get *key :task-id)))
+        (this-module-pobject-task-global *pstate-name :> $$p)
+        (do-transform! *path $$p :> *ret)
+        (ack-return> *ret)
+       (else>)
+        (ack-return> {:type      :failure
+                      :exception (h/ex-info "Agent invoke has been retried"
+                                            {})}))
+
+     (source> datasets-depot-sym :> *data)
+      (datasets/handle-datasets-op *data)
+
+     (source> agent-edit-depot-sym :> *data)
+      (at/handle-agent-edit *data)
+
+     (source> global-actions-depot-sym :> *data)
+      (<<cond
+       (case> (instance? EvaluatorEvent *data))
+        (evals/handle-evaluators-op *data)
+
+       (case> (instance? HumanFeedbackEvent *data))
+        (evals/handle-human-feedback-op *data)
+
+       (case> (instance? ExperimentEvent *data))
+        (exp/handle-experiments-op *data)
+
+       (case> (instance? RuleEvent *data))
+        (ana/handle-rule-event *data)
+
+       (case> (instance? ChangeConfig *data))
+        (at/handle-global-config *data)
+
+       (default>)
+        (throw! (h/ex-info "Unexpected global action type" {:type (class *data)})))
+    ))
+  (queries/declare-agent-get-names-query-topology topologies
+                                                  (-> agent-graphs
+                                                      keys
+                                                      set))
+  (queries/declare-get-datasets-page-topology topologies)
+  (queries/declare-search-datasets-topology topologies)
+  (queries/declare-search-examples-query-topology topologies)
+  (queries/declare-multi-examples-query-topology topologies)
+  (queries/declare-all-evaluator-builders-query-topology topologies)
+  (ana/declare-all-action-builders-query-topology topologies)
+  (queries/declare-try-evaluator-query-topology topologies)
+  (queries/declare-search-evaluators-query-topology topologies)
+  (queries/declare-search-human-metrics-query-topology topologies)
+  (queries/declare-search-human-feedback-queues-query-topology topologies)
+  (queries/declare-search-experiments-query-topology topologies)
+  (queries/declare-experiment-results-query-topology topologies)
+  (queries/declare-human-feedback-queue-info topologies)
+  (queries/declare-human-feedback-queue-page topologies)
+
+  (queries/declare-get-module-store-info topologies)
+
+  (queries/declare-fork-affected-aggs-query-topology topologies)
+  (queries/declare-get-current-graph topologies)
+  (queries/declare-get-invokes-page-topology topologies)
+  (queries/declare-tracing-query-topology topologies)
+  (queries/declare-get-action-log-page-topology topologies)
+  (queries/declare-search-metadata-topology topologies)
+  (queries/declare-all-agent-metrics-topology topologies)
+
+  (doseq [[agent-name agent-graph] agent-graphs]
+    (define-agent! agent-name
+                   setup
+                   topologies
+                   stream-topology
+                   mb-topology
+                   analytics-mb-topology
+                   agent-graph)))
+
+(defn convert-agent-object-options
+  [^AgentObjectOptions$Impl options]
+  (when options
+    (setval [MAP-VALS nil?]
+            NONE
+            {:thread-safe?        (.threadSafe options)
+             :auto-tracing?       (.autoTracing options)
+             :worker-object-limit (.workerObjectLimit options)})))
+
+(defn mk-failure-exception
+  [result exceptions]
+  (let [s (-> result
+              :val
+              str)
+        s (if (empty? exceptions)
+            s
+            (str s
+                 " (last failure: "
+                 (-> exceptions
+                     last
+                     h/first-line)
+                 ")"))]
+    (AgentFailedException. s)))
+
+(defn hook:agent-result-proxy [proxy])
+
+(defn client-wait-for-result
+  ([root-pstate agent-invoke handle-fn]
+   (client-wait-for-result root-pstate agent-invoke handle-fn false))
+  ([root-pstate ^AgentInvoke agent-invoke handle-fn stats?]
+   (let [agent-task-id (.getTaskId agent-invoke)
+         agent-id      (.getAgentInvokeId agent-invoke)
+         ret           (CompletableFuture.)
+         proxy-atom    (atom nil)
+         ks            [:result :exception-summaries :human-requests]
+         ks            (if stats? (conj ks :stats) ks)]
+     (.thenApply
+      (foreign-proxy-async
+       [(keypath agent-id)
+        (submap ks)
+        (transformed :human-requests first)
+        (transformed [:exception-summaries ALL] :throwable-str)
+        (multi-transformed [(map-key :exception-summaries)
+                            (termval :exceptions)])
+        (multi-transformed [(map-key :human-requests) (termval :human-request)])]
+       root-pstate
+       {:pkey        agent-task-id
+        :callback-fn
+        (fn [m _ _]
+          (let [done-fn (handle-fn m)]
+            (when (some? done-fn)
+              (when-not (.isDone ret)
+                (done-fn ret))
+              (locking proxy-atom
+                (cond
+                  (nil? @proxy-atom)
+                  (reset! proxy-atom ::close)
+
+                  (keyword? @proxy-atom) nil
+
+                  :else
+                  (do
+                    (close! @proxy-atom)
+                    (reset! proxy-atom ::done)
+                  )))
+            )))
+       })
+      (h/cf-function [proxy-state]
+        (hook:agent-result-proxy proxy-state)
+        (locking proxy-atom
+          (if (= ::close @proxy-atom)
+            (do
+              (close! proxy-state)
+              (reset! proxy-atom ::done))
+            (reset! proxy-atom proxy-state))
+        )))
+     ret
+   )))
+
+
+(defn delegating-query
+  [agent-name delegate]
+  (reify
+   QueryTopologyClient
+   (invoke [this args]
+     (let [new-args (cons agent-name args)]
+       (apply foreign-invoke-query delegate new-args)))
+   (invokeAsync [this args]
+     (let [new-args (cons agent-name args)]
+       (apply foreign-invoke-query-async delegate new-args)))))

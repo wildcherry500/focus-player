@@ -1,0 +1,235 @@
+(ns repl
+  (:use
+   [com.rpl.rama])
+  (:require
+   [com.rpl.agent-o-rama :as aor]
+   [com.rpl.agent-o-rama.impl.types :as aor-types]
+   [com.rpl.rama.test :as rtest]
+   [shadow.cljs.devtools.api :as shadow]
+   [shadow.cljs.devtools.server]
+   [com.rpl.agent.basic.basic-agent :as basic-agent]
+   [com.rpl.agent.research-agent :as research-agent]
+   [com.rpl.agent.e2e-test-agent :as e2e-test-agent]
+   [com.rpl.agent.streaming-test-agent :as streaming-test-agent]
+   [com.rpl.agent.gantt-stress-agent :as gantt-stress-agent])
+  (:import
+   [dev.langchain4j.data.message
+    SystemMessage
+    UserMessage]))
+
+(defn start-repl
+  [ipc & {:keys [port build-id] :or {port 1974 build-id :frontend}}]
+  (shadow.cljs.devtools.server/start!)
+  (shadow/watch build-id)
+  (aor/start-ui ipc {:port port}))
+
+(defn stop-repl
+  [ipc]
+  (aor/stop-ui)
+  (close! ipc))
+
+(defn launch-dev
+  "playwright tests assume these modules are launched"
+  [ipc & {:keys [port build-id] :or {port 1974 build-id :frontend}}]
+
+  ;; Launch modules FIRST
+  (rtest/launch-module!
+   ipc
+   basic-agent/BasicAgentModule
+   {:tasks 1 :threads 1})
+
+  (rtest/launch-module!
+   ipc
+   e2e-test-agent/E2ETestAgentModule
+   {:tasks 1 :threads 1})
+  
+  (rtest/launch-module!
+   ipc
+   streaming-test-agent/StreamingTestAgentModule
+   {:tasks 1 :threads 1})
+  
+  (rtest/launch-module!
+   ipc
+   gantt-stress-agent/GanttStressModule
+   {:tasks 1 :threads 1})
+
+  ;; Start REPL/UI server AFTER modules are ready
+  (println "All modules launched. Starting UI server...")
+  (start-repl ipc {:port port :build-id build-id})
+  (println "Setup complete. Server running with all modules ready."))
+
+(defn launch-no-frontend-build
+  "build ui with ./scripts/build-ui.sh, then run this."
+  [ipc]
+
+  (rtest/launch-module!
+   ipc
+   streaming-test-agent/StreamingTestAgentModule
+   {:tasks 1 :threads 1})
+  
+  (rtest/launch-module!
+   ipc
+   research-agent/ResearchAgentModule
+   {:tasks 1 :threads 1})
+
+  (aor/start-ui ipc {:port 1974}))
+
+(comment
+  "instructions for ai"
+  "./scripts/repl.sh to start repl"
+  "use your repl to evaluate these forms"
+  (require 'repl :reload)
+  (def ipc (rtest/create-ipc))
+  (launch-dev ipc)
+  "use inline def trick to see intermediate values"
+  )
+
+(comment
+  (require '[snitch.core :refer [defn* defmethod* *fn *let]])
+  
+  (def ipc (open-cluster-manager-internal {"conductor.host" "localhost"}))
+  (def ipc (rtest/create-ipc))
+  
+  (launch-dev ipc)
+  (launch-no-frontend-build ipc)
+  
+  (rtest/update-module!
+   ipc
+   e2e-test-agent/E2ETestAgentModule
+   {:tasks 1 :threads 1})
+  (aor/stop-ui)
+
+  (start-repl ipc)
+  (stop-repl ipc)
+
+  (shadow.cljs.devtools.server/stop!)
+  (shadow.cljs.devtools.server/reload!)
+  (shadow/watch :dev)
+
+  (start-repl ipc {:port 1974 :build-id :dev})
+  (aor/start-ui u)
+  
+  (rtest/launch-module!
+   ipc
+   research-agent/ResearchAgentModule
+   {:tasks 1 :threads 1})
+  
+  (rtest/launch-module!
+   ipc
+   gantt-stress-agent/GanttStressModule
+   {:tasks 1 :threads 1})
+
+  ;; (shadow/watch :dev2)
+  ;; (shadow/nrepl-select :dev2)
+
+  (require 'com.rpl.agent-o-rama.ui.rules-test-agent)
+  (rtest/launch-module!
+   ipc
+   com.rpl.agent-o-rama.ui.rules-test-agent/RulesTestAgentModule
+   {:tasks 1 :threads 1})
+  (rtest/destroy-module!
+   ipc
+   (get-module-name
+    com.rpl.agent-o-rama.ui.rules-test-agent/RulesTestAgentModule))
+  (let [agent-manager
+        (aor/agent-manager
+         ipc
+         (get-module-name
+          com.rpl.agent-o-rama.ui.rules-test-agent/RulesTestAgentModule))
+        global-actions-depot (:global-actions-depot
+                              (aor-types/underlying-objects agent-manager))]
+    (com.rpl.agent-o-rama.ui.rules-test-agent/setup-rules-testing!
+     agent-manager
+     global-actions-depot))
+
+  (require 'com.rpl.agent-o-rama.ui.feedback-test-agent)
+  (rtest/launch-module!
+   ipc
+   com.rpl.agent-o-rama.ui.feedback-test-agent/FeedbackTestAgentModule
+   {:tasks 1 :threads 1})
+  (let [agent-manager
+        (aor/agent-manager
+         ipc
+         (get-module-name
+          com.rpl.agent-o-rama.ui.feedback-test-agent/FeedbackTestAgentModule))
+        global-actions-depot (:global-actions-depot
+                              (aor-types/underlying-objects agent-manager))]
+    (com.rpl.agent-o-rama.ui.feedback-test-agent/setup-feedback-testing!
+     agent-manager
+     global-actions-depot))
+
+  (require 'com.rpl.agent-o-rama.ui.trace-analytics-test-agent)
+
+  (rtest/launch-module!
+   ipc
+   com.rpl.agent-o-rama.ui.trace-analytics-test-agent/TraceAnalyticsTestAgentModule
+   {:tasks 1 :threads 1})
+
+  (rtest/update-module!
+   ipc
+   com.rpl.agent-o-rama.ui.trace-analytics-test-agent/TraceAnalyticsTestAgentModule
+   {:tasks 1 :threads 1})
+
+  (require 'com.rpl.agent.basic.basic-agent)
+
+  (rtest/launch-module!
+   ipc
+   com.rpl.agent.basic.basic-agent/BasicAgentModule
+   {:tasks 1 :threads 1})
+
+  (rtest/destroy-module!
+   ipc
+   (get-module-name com.rpl.agent.basic.basic-agent/BasicAgentModule))
+
+  (require 'com.rpl.agent.basic.langchain4j-agent)
+  (rtest/launch-module!
+   ipc
+   com.rpl.agent.basic.langchain4j-agent/LangChain4jAgentModule
+   {:tasks 1 :threads 1})
+
+  (rtest/destroy-module!
+   ipc
+   (get-module-name com.rpl.agent.basic.langchain4j-agent/LangChain4jAgentModule))
+
+  (require 'com.rpl.agent.basic.tools-agent)
+  (rtest/launch-module!
+   ipc
+   com.rpl.agent.basic.tools-agent/ToolsAgentModule
+   {:tasks 1 :threads 1})
+  (rtest/update-module!
+   ipc
+   com.rpl.agent.basic.tools-agent/ToolsAgentModule
+   {:tasks 1 :threads 1})
+  
+  (rtest/destroy-module!
+   ipc
+   (get-module-name com.rpl.agent.basic.tools-agent/ToolsAgentModule))
+
+  (require 'com.rpl.agent.react)
+  (rtest/launch-module!
+   ipc
+   com.rpl.agent.react/ReActModule
+   {:tasks 1 :threads 1})
+
+  (rtest/destroy-module!
+   ipc
+   (get-module-name com.rpl.agent.react/ReActModule))
+
+  (let [module-name   (get-module-name com.rpl.agent.react/ReActModule)
+        agent-manager (aor/agent-manager ipc module-name)
+        agent         (aor/agent-client agent-manager "ReActAgent")
+        _ (print "Ask your question (agent has web search access): ")
+        _ (flush)
+        ^String user-input (read-line)
+        result        (aor/agent-invoke
+                       agent
+                       [(SystemMessage/from
+                         (format
+                          "You are a helpful AI assistant. System time: %s"
+                          (.toString (java.time.Instant/now))))
+                        (UserMessage. user-input)])]
+    (println result))
+
+
+  (shadow/compile :frontend)
+  )

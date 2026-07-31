@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# Agent-o-rama UI launcher script
+# Usage: ./aor --rama <path-to-rama-release> [--port <port>] [--jvm-opts "<options>"]
+
+set -e
+
+# Default port
+PORT=1974
+
+# Default JVM options
+JVM_OPTS="-Xmx1g"
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --rama)
+      RAMA_ROOT="$2"
+      shift 2
+      ;;
+    --port)
+      PORT="$2"
+      shift 2
+      ;;
+    --jvm-opts)
+      JVM_OPTS="$2"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: $0 --rama <path-to-rama-release> [--port <port>] [--jvm-opts \"<options>\"]"
+      echo ""
+      echo "Options:"
+      echo "  --rama <path>       Path to Rama release root (or set RAMA_HOME env variable)"
+      echo "  --port <port>       Port for the UI (default: 1974)"
+      echo "  --jvm-opts <opts>   JVM options to pass to the Java process"
+      echo "                      Example: --jvm-opts \"-Xmx2g -XX:+UseG1GC\""
+      echo "  -h, --help          Show this help message"
+      echo ""
+      echo "Environment variables:"
+      echo "  RAMA_HOME           Default path to Rama release root (used if --rama not provided)"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Use --help for usage information"
+      exit 1
+      ;;
+  esac
+done
+
+# Check if --rama flag was provided, fall back to RAMA_HOME env variable
+if [[ -z "$RAMA_ROOT" ]]; then
+  if [[ -n "$RAMA_HOME" ]]; then
+    echo "Warning: --rama flag not provided, defaulting to RAMA_HOME=$RAMA_HOME"
+    RAMA_ROOT="$RAMA_HOME"
+  else
+    echo "Error: --rama flag is required or RAMA_HOME environment variable must be set"
+    echo "Usage: $0 --rama <path-to-rama-release> [--port <port>]"
+    exit 1
+  fi
+fi
+
+# Check if Rama root directory exists
+if [[ ! -d "$RAMA_ROOT" ]]; then
+  echo "Error: Rama root directory does not exist: $RAMA_ROOT"
+  exit 1
+fi
+
+# Check if Rama root contains expected files
+if [[ ! -f "$RAMA_ROOT/rama.jar" ]]; then
+  echo "Error: rama.jar not found in Rama root directory: $RAMA_ROOT"
+  exit 1
+fi
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Build classpath
+CLASSPATH=""
+
+# Add current directory (where script is located)
+CLASSPATH="$SCRIPT_DIR/*"
+CLASSPATH="$CLASSPATH:$SCRIPT_DIR"
+
+# Add lib/ directory from script location
+CLASSPATH="$CLASSPATH:$SCRIPT_DIR/lib/*"
+
+# Add Rama release root
+CLASSPATH="$CLASSPATH:$RAMA_ROOT/rama.jar"
+
+# Add Rama release lib/ directory
+CLASSPATH="$CLASSPATH:$RAMA_ROOT/lib/*"
+
+# Check if Java is available
+if ! command -v java &> /dev/null; then
+  echo "Error: Java is not installed or not in PATH"
+  exit 1
+fi
+
+# Launch the UI
+echo "Starting Agent-o-rama UI on port $PORT..."
+echo "Rama root: $RAMA_ROOT"
+if [[ -n "$JVM_OPTS" ]]; then
+  echo "JVM options: $JVM_OPTS"
+fi
+echo ""
+java $JVM_OPTS -cp "$CLASSPATH" com.rpl.agent_o_rama.impl.ui.launch "$PORT"

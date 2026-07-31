@@ -1,0 +1,55 @@
+/pom.xml
+pom.xml.asc
+*.jar
+*.class
+/*zip
+/lib/
+/classes/
+target/
+/checkouts/
+.lein-deps-sum
+.lein-repl-history
+.lein-plugins/
+.lein-failures
+.nrepl-port
+.cpcache/
+/.apt_generated_tests/
+/.apt_generated/
+.classpath
+.factorypath
+.settings/
+.project
+scripts/code-format
+.on-save.json
+.vscode
+.claude
+.clojure-mcp
+
+# frontend
+.shadow-cljs/
+node_modules/
+public/
+
+# compiled frontend output
+resource/public/main.js
+resource/public/main*.js
+resource/public/manifest.edn
+
+# claude files
+CLAUDE.md
+.claude/settings.local.json
+
+# clojure-mcp
+.clojure-mcp/code_index.txt
+
+# clj-kondo and clojure-lsp
+.clj-kondo/.cache/
+.clj-kondo/imports/
+.lsp/.cache/
+
+# playwright
+test-results/
+playwright-report/
+
+# local UI capture outputs
+dev/screenshots/

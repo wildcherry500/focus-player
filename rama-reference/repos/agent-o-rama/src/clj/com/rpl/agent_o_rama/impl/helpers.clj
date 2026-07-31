@@ -1,0 +1,429 @@
+(ns com.rpl.agent-o-rama.impl.helpers
+  (:refer-clojure :exclude [ex-info])
+  (:use [com.rpl.rama]
+        [com.rpl.rama.path])
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [com.rpl.rama.ops :as ops]
+   [jsonista.core :as j])
+  (:import
+   [com.github.f4b6a3.uuid
+    UuidCreator]
+   [com.jayway.jsonpath
+    JsonPath
+    Predicate]
+   [com.rpl.agentorama
+    AgentFailedException]
+   [com.rpl.agentorama.impl
+    AORExceptionInfo]
+   [com.rpl.rama.helpers
+    TopologyUtils]
+   [java.io
+    PrintWriter
+    StringWriter]
+   [java.time
+    Instant
+    LocalDateTime]
+   [java.util
+    UUID]
+   [java.util.concurrent
+    CompletableFuture
+    Semaphore]
+   [java.util.function
+    Function]))
+
+(def MAX-ARITY 8)
+
+(defn ex-info
+  ([message data]
+   (AORExceptionInfo. message data))
+  ([message data cause]
+   (AORExceptionInfo. message data cause)))
+
+(defmacro dofor
+  "Shortcut for `doall` and `for`."
+  [& body]
+  `(doall (for ~@body)))
+
+(defn current-time-millis
+  []
+  (TopologyUtils/currentTimeMillis))
+
+(defn type-hinted
+  [^Class class o]
+  (with-meta o
+    {:tag (-> class
+              .getTypeName
+              symbol)}))
+
+(defn rama-void-function-class-symbol
+  [i]
+  (symbol (str "com.rpl.agentorama.ops.RamaVoidFunction" i)))
+
+(defn rama-void-function-class
+  [i]
+  (resolve (rama-void-function-class-symbol i)))
+
+(defmacro mk-void-jfn-converter
+  []
+  (let [arities (for [i (range MAX-ARITY)]
+                  (let [klass (rama-void-function-class i)
+                        args  (dofor [j (range i)]
+                                (symbol (str "arg" j)))
+                        t     (type-hinted klass 'f)]
+                    `([~@args] (.invoke ~t ~@args))
+                  ))]
+    `(defn ~'convert-void-jfn
+       [~'f]
+       (fn ~@arities))))
+
+(mk-void-jfn-converter)
+
+(defn rama-function-class-symbol
+  [i]
+  (symbol (str "com.rpl.rama.ops.RamaFunction" i)))
+
+(defn rama-function-class
+  [i]
+  (resolve (rama-function-class-symbol i)))
+
+(defmacro mk-jfn-converter
+  []
+  (let [arities (for [i (range MAX-ARITY)]
+                  (let [klass (rama-function-class i)
+                        args  (dofor [j (range i)]
+                                (symbol (str "arg" j)))
+                        t     (type-hinted klass 'f)]
+                    `([~@args] (.invoke ~t ~@args))
+                  ))]
+    `(defn ~'convert-jfn
+       [~'f]
+       (fn ~@arities))))
+
+(mk-jfn-converter)
+
+(defn invoke
+  ([afn] (afn))
+  ([afn a] (afn a))
+  ([afn a b] (afn a b))
+  ([afn a b c] (afn a b c))
+  ([afn a b c d] (afn a b c d))
+  ([afn a b c d e] (afn a b c d e))
+  ([afn a b c d e f] (afn a b c d e f))
+  ([afn a b c d e f g] (afn a b c d e f g))
+  ([afn a b c d e f g h] (afn a b c d e f g h))
+  ([afn a b c d e f g h i] (afn a b c d e f g h i))
+  ([afn a b c d e f g h i j] (afn a b c d e f g h i j))
+  ([afn a b c d e f g h i j k] (afn a b c d e f g h i j k))
+  ([afn a b c d e f g h i j k l] (afn a b c d e f g h i j k l))
+  ([afn a b c d e f g h i j k l m] (afn a b c d e f g h i j k l m))
+  ([afn a b c d e f g h i j k l m n] (afn a b c d e f g h i j k l m n))
+  ([afn a b c d e f g h i j k l m n o] (afn a b c d e f g h i j k l m n o))
+  ([afn a b c d e f g h i j k l m n o p] (afn a b c d e f g h i j k l m n o p)))
+
+(defmacro cf-function
+  [& body]
+  `(let [afn# (fn ~@body)]
+     (reify
+      Function
+      (apply [_ arg#]
+        (afn# arg#)))))
+
+(defn start-index [s] 0)
+(defn srange-dynamic-end-index
+  [s start-index]
+  (count s))
+
+(defn mk-semaphore
+  (^Semaphore [permits] (mk-semaphore permits false))
+  (^Semaphore [permits fair?] (Semaphore. permits fair?)))
+
+(defn acquire-semaphore
+  ([^Semaphore s] (.acquire s))
+  ([^Semaphore s amt] (.acquire s amt))
+  ([^Semaphore s amt timeout-millis]
+   (or (.tryAcquire s
+                    amt
+                    timeout-millis
+                    java.util.concurrent.TimeUnit/MILLISECONDS)
+       (throw (ex-info "Semaphore timed out"
+                       {:amt amt :timeout-millis timeout-millis})))))
+
+(defn release-semaphore
+  ([^Semaphore s] (.release s))
+  ([^Semaphore s amt] (.release s amt)))
+
+(defn lastv
+  [v]
+  (let [c (count v)]
+    (if (not= c 0)
+      (nth v (dec c)))))
+
+(defnav VOLATILE
+  []
+  (select* [_this structure next-fn]
+           (next-fn @structure))
+  (transform* [_this structure next-fn]
+              (vswap! structure next-fn)
+              structure))
+(defn into-map
+  [arg]
+  (into {} arg))
+
+(defn thread-local-set!
+  [^ThreadLocal t v]
+  (.set t v))
+
+(defn thread-local-get
+  [^ThreadLocal t]
+  (.get t))
+
+(defmacro safe->
+  [x & forms]
+  (let [g (gensym "val")]
+    (reduce
+     (fn [acc form]
+       `(let [~g ~acc]
+          (if (nil? ~g)
+            nil
+            ~(if (seq? form)
+               (with-meta
+                 `(~(first form) ~g ~@(rest form))
+                 (meta form))
+               `(~form ~g)))))
+     x
+     forms)))
+
+(defn remove-empty-vals
+  [m]
+  (setval [MAP-VALS #(or (nil? %) (and (coll? %) (empty? %)))]
+          NONE
+          m))
+
+(defn random-uuid7
+  []
+  (UuidCreator/getTimeOrderedEpoch))
+
+(defn random-uuid-str
+  []
+  (str (random-uuid7)))
+
+(defn random-uuid7-at-timestamp
+  [^long millis]
+  (UuidCreator/getTimeOrderedEpoch (Instant/ofEpochMilli millis)))
+
+(defn min-uuid7-at-timestamp
+  [^long millis]
+  (UuidCreator/getTimeOrderedEpochMin (Instant/ofEpochMilli millis)))
+
+;; - this is max UUID for purposes of Clojure sorted maps, which compares the components as signed
+;; values
+;; - this is greater than any UUID7 whether compared in Clojure sorted maps or as RocksDB keys,
+;; which is all that matters
+(defn max-uuid
+  []
+  (java.util.UUID. Long/MAX_VALUE Long/MAX_VALUE))
+
+(defn uuid-inc
+  [^UUID u]
+  (let [msb (.getMostSignificantBits u)
+        lsb (.getLeastSignificantBits u)]
+    (if (not= lsb -1)
+      (UUID. msb (inc lsb))
+      (UUID. (inc msb) 0))))
+
+(defn uuid-dec
+  [^UUID u]
+  (let [msb (.getMostSignificantBits u)
+        lsb (.getLeastSignificantBits u)]
+    (if (not= lsb 0)
+      (UUID. msb (dec lsb))
+      (UUID. (dec msb) -1))))
+
+(defn half-uuid
+  [^UUID uuid]
+  (.getLeastSignificantBits uuid))
+
+(defn throwable->str
+  [^Throwable t]
+  (let [sw (StringWriter.)]
+    (.printStackTrace t (PrintWriter. sw))
+    (.toString sw)))
+
+(defn first-line
+  [s]
+  (first (str/split s #"\n" 2)))
+
+;; LocalDateTime is serialized as an ISO string since there's no Rama
+;; serializer for it
+(defn parse-local-date-time
+  ^LocalDateTime [^String s]
+  (if s (LocalDateTime/parse s)))
+
+(defn validate-options!
+  [context options spec]
+  (let [provided (-> options
+                     keys
+                     set)
+        allowed  (-> options
+                     keys
+                     set)
+        invalid  (set/difference provided allowed)
+        errors   (->> options
+                      (mapv
+                       (fn [[k v]]
+                         (if-let [sfn (get spec k)]
+                           (if-let [s (sfn v)]
+                             (format "Value for option %s is invalid: %s"
+                                     k
+                                     s))
+                           (format "%s is an invalid option" k))))
+                      (filterv some?))]
+    (when-not (empty? invalid)
+      (throw (ex-info "Invalid options specified" {:invalid invalid})))
+    (when-not (empty? errors)
+      (throw (ex-info "Invalid options" {:errors errors :context context}))
+    )))
+
+(defn positive-number-spec
+  [v]
+  (when-not (and (number? v) (pos? v))
+    "value must be positive number"))
+
+(defn boolean-spec
+  [v]
+  (when-not (boolean? v)
+    "value must be boolean"))
+
+(defn fn-spec
+  [v]
+  (when-not (ifn? v)
+    "value must be a function"))
+
+(defn list-spec
+  [v]
+  (when-not (or (nil? v) (instance? java.util.List v))
+    "value must be a list"))
+
+(defn any-spec
+  [v])
+
+(defn map-spec
+  [v]
+  (when-not (or (nil? v) (instance? java.util.Map v))
+    "value must be a map"))
+
+(defn string-spec
+  [v]
+  (when-not (string? v)
+    "value must be a string"))
+
+(defn first-key [^java.util.SortedMap m] (.firstKey m))
+(defn last-key [^java.util.SortedMap m] (.lastKey m))
+
+(defn contains-string?
+  [^String s substring]
+  (.contains s substring))
+
+(defn read-json-path
+  [obj json-path]
+  (JsonPath/read ^Object obj
+                 ^String json-path
+                 ^"[Lcom.jayway.jsonpath.Predicate;" (into-array Predicate [])))
+
+(defn read-compiled-json-path
+  [^Object obj ^JsonPath compiled]
+  (.read compiled obj))
+
+(defn compile-json-path
+  [^String json-path]
+  (JsonPath/compile json-path (into-array Predicate [])))
+
+(defn parse-json-path-template
+  [s]
+  (j/read-value
+   (if (and (str/starts-with? s "$") (not (str/starts-with? s "$$")))
+     (str "\"" s "\"")
+     s)))
+
+(defn resolve-json-path-template
+  [template data]
+  (cond
+    (string? template)
+    (if (str/starts-with? template "$")
+      (if (str/starts-with? template "$$")
+        (subs template 1) ; "$$..." → "$..."
+        (read-json-path data template))
+      template)
+
+    (vector? template)
+    (mapv #(resolve-json-path-template % data) template)
+
+    (map? template)
+    (transform MAP-VALS #(resolve-json-path-template % data) template)
+
+    :else template))
+
+(defn mk-completable-future
+  ^CompletableFuture []
+  (CompletableFuture.))
+
+(defn cf-get
+  [^CompletableFuture cf]
+  (.get cf))
+
+(defn split-into-n
+  [n coll]
+  (reduce
+   (fn [cols [i x]]
+     (update cols (mod i n) conj x))
+   (vec (repeat n []))
+   (map-indexed vector coll)))
+
+(def +concatv
+  (accumulator
+   (fn [v]
+     (path END (termval v)))
+   :init-fn
+   (constantly [])))
+
+(defn to-rama-connection-info
+  [host port]
+  (let [m {"conductor.host" host}]
+    (if port
+      (assoc m "conductor.port" port)
+      m)))
+
+(defn result->output
+  [{:keys [failure? val] :as result}]
+  (cond
+    (nil? result)
+    (AgentFailedException. "No result")
+
+    failure?
+    (AgentFailedException. (str val))
+
+    :else
+    val))
+
+(defn node->output
+  [result emits]
+  (if (some? result)
+    (result->output result)
+    (mapv
+     (fn [{:keys [node-name args]}]
+       {"node" node-name
+        "args" args})
+     emits)))
+
+(defn exception-cause
+  [klass ^Throwable t]
+  (->> (iterate #(.getCause ^Throwable %) t)
+       (take-while identity)
+       (some #(when (instance? klass %)
+                %))))
+
+(defn exception-cause?
+  [klass ^Throwable t]
+  (boolean (exception-cause klass t)))
