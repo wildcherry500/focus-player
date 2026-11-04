@@ -2353,12 +2353,9 @@ function showPlayer() {
   document.getElementById('btn-watch-learn').style.display  = isLessonMaker ? 'inline-block' : 'none';
   document.getElementById('btn-exit-watch-learn').style.display = 'none';
   // Show learner queue for learners
-  if (!isLessonMaker) {
-    renderLearnerQueue();
-    fetchLearnerLessonsFromSupabase(activeProfile.id);
-  } else {
-    document.getElementById('learner-queue-section').style.display = 'none';
-  }
+  // Lesson makers see the queue too, for lessons they assigned to themselves.
+  renderLearnerQueue();
+  fetchLearnerLessonsFromSupabase(activeProfile.id);
   renderNotes();
 }
 
@@ -2381,6 +2378,11 @@ function renderLearnerQueue() {
   }
 
   if (!lessons.length) {
+    if (activeProfile.role === 'lesson-maker') {
+      // Nothing assigned to themselves: keep the queue hidden
+      section.style.display = 'none';
+      return;
+    }
     section.style.display = 'block';
     list.innerHTML = '<div class="lq-empty">No lessons assigned yet \u2014 ask your Lesson Maker to create one.</div>';
     return;
@@ -2652,6 +2654,13 @@ function populateLearnerList(preCheckedIds) {
   container.innerHTML = '';
   var profiles = loadProfiles();
   var learners = profiles.filter(function(p){ return p.role !== 'lesson-maker'; });
+  // A lesson maker can assign lessons to themselves (no separate Watcher needed).
+  var self = (activeProfile && activeProfile.role === 'lesson-maker') ? activeProfile : null;
+  if (self) {
+    learners.unshift(self);
+    // Nobody else to pick and nothing pre-selected: default to assigning to self
+    if (learners.length === 1 && !preCheckedIds) checkedSet[self.id] = true;
+  }
   if (!learners.length) {
     var empty = document.createElement('div');
     empty.className = 'lb-learner-empty';
@@ -2675,7 +2684,7 @@ function populateLearnerList(preCheckedIds) {
     av.textContent = initials(p.name);
     var nm = document.createElement('span');
     nm.className = 'lb-learner-item-name';
-    nm.textContent = p.name;
+    nm.textContent = (self && p.id === self.id) ? p.name + ' (me)' : p.name;
     item.appendChild(cb);
     item.appendChild(av);
     item.appendChild(nm);
